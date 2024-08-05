@@ -54,5 +54,5 @@
 #define WIFI_PRIORITIZED true
 
 // Interval in ms to check again to switch back to primary comms method
-#define PRIMARY_CHECK_TIME_MS 600000
+#define PRIMARY_CHECK_TIME_MS 30000
 

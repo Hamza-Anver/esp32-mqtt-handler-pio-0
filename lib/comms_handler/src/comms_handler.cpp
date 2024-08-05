@@ -2,6 +2,37 @@
 #include "esp_log.h"
 #include "A76XX.h"
 
+#ifndef SPIFFS
+#define SPIFFS LITTLEFS
+#endif
+
+/* -------------------------------------------------------------------------- */
+/*                              WIFI CONFIG PAGE                              */
+/* -------------------------------------------------------------------------- */
+static const char *CONFIG_TAG = "WiFiConfig";
+
+void CommsHandler::WiFi_config_page(void *pvParameters)
+{
+    auto *instance = static_cast<CommsHandler *>(pvParameters);
+    // DEBUG ONLY
+    instance->WiFi_prov.resetCredentials();
+    instance->WiFi_prov.enableSerialDebug(true);
+    instance->WiFi_prov.connectToWiFi();
+    instance->provisioner_running = false;
+    vTaskDelete(NULL);
+}
+
+void CommsHandler::WiFi_config_init()
+{
+    // So it'll be non blocking
+    if(provisioner_running != true)
+    {
+         xTaskCreatePinnedToCore(WiFi_config_page, "WiFi_config_page", 4096, this, 1, NULL, 0);
+    }
+    provisioner_running = true;
+   
+}
+
 /* -------------------------------------------------------------------------- */
 /*                            A76XX MODEM FUNCTIONS                           */
 /* -------------------------------------------------------------------------- */
@@ -79,30 +110,25 @@ static const char *WIFI_TAG = "WiFi";
 
 bool CommsHandler::WiFi_init()
 {
-    wifi_client = new WiFiClient();
-    mqtt_client = new MQTTClient(1024);
+    WiFi_client = new WiFiClient();
+    WiFi_mqtt = new MQTTClient(1024);
     return true;
 }
 
 bool CommsHandler::WiFi_connect()
 {
     int num_attempts = 0;
-    WiFi.begin(WIFI_SSID_DEF, WIFI_PASS_DEF);
-    while (WiFi.status() != WL_CONNECTED)
+
+    if (WiFi.status() != WL_CONNECTED)
     {
-        ESP_LOGI(WIFI_TAG, "Waiting to connect to WiFi ...");
-        vTaskDelay(pdMS_TO_TICKS(1000));
-        num_attempts++;
-        if (num_attempts > 5)
-        {
-            ESP_LOGE(WIFI_TAG, "Failed to connect to WiFi");
-            return false;
-        }
+        ESP_LOGE(WIFI_TAG, "Not connected to WiFi, running configurator");
+        WiFi_config_init();
+        return false;
     }
 
-    mqtt_client->begin(MQTT_SERVER, MQTT_PORT, *wifi_client);
+    WiFi_mqtt->begin(MQTT_SERVER, MQTT_PORT, *WiFi_client);
     num_attempts = 0;
-    while (!mqtt_client->connect(MQTT_CLIENT_ID))
+    while (!WiFi_mqtt->connect(MQTT_CLIENT_ID))
     {
         ESP_LOGE(WIFI_TAG, "Waiting to connect to MQTT Server ...");
         vTaskDelay(pdMS_TO_TICKS(1000));
@@ -123,7 +149,7 @@ bool CommsHandler::WiFi_connected()
 
 bool CommsHandler::WiFi_pub(const char *topic, const char *message, int qos)
 {
-    return mqtt_client->publish(topic, message, strlen(message), MQTT_RETAIN, qos);
+    return WiFi_mqtt->publish(topic, message, strlen(message), MQTT_RETAIN, qos);
 }
 
 bool CommsHandler::WiFi_disable()
@@ -161,6 +187,7 @@ void CommsHandler::MQTT_manage_task(void *pvParameters)
 
     bool use_wifi = WIFI_PRIORITIZED;
     bool on_secondary = false;
+    TickType_t last_switch_ticks = xTaskGetTickCount();
     MQTT_pub_t pub;
     for (;;)
     {
@@ -250,18 +277,20 @@ void CommsHandler::MQTT_manage_task(void *pvParameters)
             // if use_wifi is false, then last connection attempt was LTE
             use_wifi = !use_wifi;
             on_secondary = !on_secondary;
-
+            last_switch_ticks = xTaskGetTickCount();
             instance->Comm_state = Comm_Off;
             continue;
-
         }
         else
         {
             ESP_LOGE(O_TAG, "Unknown Comm State");
         }
-        // Switch back to WiFi if connected to WiFi and it is prioritized
-        if(WIFI_PRIORITIZED && use_wifi == false){
-            if(instance->WiFi_connected()){
+
+        // Switch back to WiFi if connected to WiFi and it is prioritized and timeout reached
+        if (WIFI_PRIORITIZED && use_wifi == false)
+        {
+            if (xTaskGetTickCount() - last_switch_ticks > pdMS_TO_TICKS(PRIMARY_CHECK_TIME_MS))
+            {
                 use_wifi = true;
                 instance->Comm_state = Comm_Off;
             }
@@ -273,8 +302,25 @@ void CommsHandler::MQTT_init()
 {
     MQTT_pub_queue = xQueueCreate(10, sizeof(MQTT_pub_t));
     WiFi_state = WiFi_Off;
-    LTE_state = LTE_Off;
+    LTE_state = LTE_Disabled;
     Comm_state = Comm_Off;
     xTaskCreatePinnedToCore(MQTT_manage_task, "MQTT_manage_task", 4096, this, 1, NULL, 1);
     return void();
+}
+
+void CommsHandler::temp_debug_task(void *pvParameters)
+{
+    auto *instance = static_cast<CommsHandler *>(pvParameters);
+    for (;;)
+    {
+        vTaskDelay(pdMS_TO_TICKS(5000));
+    }
+}
+
+void CommsHandler::temp_debug()
+{
+    ESP_LOGI("CommsHandler", "Temp debug function");
+    provisioner_running = false;
+    WiFi_config_init();
+    xTaskCreatePinnedToCore(temp_debug_task, "temp_debug_task", 4096, this, 1, NULL, 1);
 }

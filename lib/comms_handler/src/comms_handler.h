@@ -9,15 +9,16 @@
 #include "freertos/task.h"
 #include "freertos/timers.h"
 #include "freertos/event_groups.h"
-#include <Arduino.h>
 #include <WiFi.h>
+#include <WiFiProvisioner.h>
 #include <MQTT.h>
 
 enum WiFi_State
 {
     WiFi_Fail,
     WiFi_Off,
-    WiFi_Connected
+    WiFi_Connected,
+    WiFi_Disabled
 };
 
 enum Comm_State
@@ -33,7 +34,8 @@ enum LTE_Module_State
 {
     LTE_Fail,
     LTE_Off,
-    LTE_Connected
+    LTE_Connected,
+    LTE_Disabled
 
 };
 
@@ -52,11 +54,18 @@ public:
     static void MQTT_manage_task(void* pvParameters);
     void MQTT_init();
 
+    static void WiFi_config_page(void* pvParameters);   
+    void WiFi_config_init();
+
+    static void temp_debug_task(void *pvParameters);
+    void temp_debug();
+
 private:
     bool LTE_init();
     bool LTE_connect();
     bool LTE_pub(const char *topic, const char *message, int qos);
     bool LTE_disable();
+
     bool WiFi_init();
     bool WiFi_connect();
     bool WiFi_connected();
@@ -64,17 +73,23 @@ private:
     bool WiFi_disable();
 
     Comm_State Comm_state;
+
     A76XX *LTE_modem;
-    A76XXMQTTClient *LTE_mqtt;
     LTE_Module_State LTE_state;
+
     WiFi_State WiFi_state;
-    WiFiClient *wifi_client;
-    MQTTClient *mqtt_client;
+    WiFiClient *WiFi_client;
+
+    A76XXMQTTClient *LTE_mqtt;
+    MQTTClient *WiFi_mqtt;
+
+    WiFiProvisioner::WiFiProvisioner WiFi_prov;
 
 
     QueueHandle_t MQTT_pub_queue;
 
     unsigned int priority_reconnect_timeout;
+    bool provisioner_running;
 };
 
 #endif // _COMMS_HANDLER
