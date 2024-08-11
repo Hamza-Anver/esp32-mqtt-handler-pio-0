@@ -1,36 +1,164 @@
 #include "comms_handler.h"
-#include "esp_log.h"
 #include "A76XX.h"
+#include <Preferences.h>
+#include <esp_log.h>
+#include "webpage.h"
 
-#ifndef SPIFFS
-#define SPIFFS LITTLEFS
-#endif
+/* -------------------------------------------------------------------------- */
+/*                       CONFIGURATION HELPER FUNCTIONS                       */
+/* -------------------------------------------------------------------------- */
+String CommsHandler::getConfigOptionString(const char *option, const char *default_value)
+{
+    _configops.begin(_conf_namespace, true);
+    String value = _configops.getString(option, default_value);
+    _configops.end();
+    ESP_LOGI("ConfigHelper", "Returning [%s] for key [%s]", value.c_str(), option);
+    return value;
+}
+
+bool CommsHandler::setConfigOptionString(const char *option, const char *value)
+{
+    _configops.begin(_conf_namespace, false);
+    int retval = _configops.putString(option, value);
+    _configops.end();
+    ESP_LOGI("ConfigHelper", "Putting [%s] for key [%s] retval: [%d]", value, option, retval);
+    return (retval != 0);
+}
 
 /* -------------------------------------------------------------------------- */
 /*                              WIFI CONFIG PAGE                              */
 /* -------------------------------------------------------------------------- */
-static const char *CONFIG_TAG = "WiFiConfig";
-
-void CommsHandler::WiFi_config_page(void *pvParameters)
+void CommsHandler::WiFi_config_page_init()
 {
-    auto *instance = static_cast<CommsHandler *>(pvParameters);
-    // DEBUG ONLY
-    instance->WiFi_prov.resetCredentials();
-    instance->WiFi_prov.enableSerialDebug(true);
-    instance->WiFi_prov.connectToWiFi();
-    instance->provisioner_running = false;
-    vTaskDelete(NULL);
+    // TODO: Handle connecting to WiFi network too somewhere
+
+    // Setup server things
+    _server = new AsyncWebServer(80);
+    _dnsServer = new DNSServer();
+    _ap_ip = IPAddress(192, 168, 4, 1);
+    _net_msk = IPAddress(255, 255, 255, 0);
+
+    WiFi.mode(WIFI_AP_STA);
+    WiFi.softAPConfig(_ap_ip, _ap_ip, _net_msk);
+
+    if (strlen(getConfigOptionString("appassword", WIFI_SSID_AP).c_str()) < 8)
+    {
+        WiFi.softAP(getConfigOptionString("apssid", WIFI_SSID_AP).c_str());
+    }
+    else
+    {
+        WiFi.softAP(getConfigOptionString("apssid", WIFI_SSID_AP).c_str(),
+                    getConfigOptionString("appassword", WIFI_PASS_AP).c_str());
+    }
+    // Wait for a second for AP to boot up
+    vTaskDelay(pdMS_TO_TICKS(1000));
+
+    _dnsServer->setErrorReplyCode(DNSReplyCode::NoError);
+    _dnsServer->start(_dns_port, "*", _ap_ip);
+
+    _server->on("/", [this](AsyncWebServerRequest *request)
+                { this->WiFi_config_handle_root(request); });
+
+    _server->on("/generate_204", [this](AsyncWebServerRequest *request)
+                { this->WiFi_config_handle_root(request); });
+
+    _server->on("/fwlink", [this](AsyncWebServerRequest *request)
+                { this->WiFi_config_handle_root(request); });
+
+    _server->onNotFound([this](AsyncWebServerRequest *request)
+                        { this->WiFi_config_handle_root(request); });
+
+    // FUNCTION CALLBACKS
+    // WiFi Scanning
+    _server->on("/startscan", HTTP_GET, [this](AsyncWebServerRequest *request)
+                { this->StationScanCallbackStart(request); });
+    _server->on("/getscan", HTTP_GET, [this](AsyncWebServerRequest *request)
+                { this->StationScanCallbackReturn(request); });
+    _server->on("/stationcfg",[this](AsyncWebServerRequest *request)
+                { this->StationSetConfig(request); });
+
+    xTaskCreate(WiFi_config_page_task, "WiFi_config_page_task", 4096, this, 1, NULL);
+
+    _server->begin();
 }
 
-void CommsHandler::WiFi_config_init()
+void CommsHandler::WiFi_config_page_task(void *pvParameters)
 {
-    // So it'll be non blocking
-    if(provisioner_running != true)
+    auto *instance = static_cast<CommsHandler *>(pvParameters);
+    for (;;)
     {
-         xTaskCreatePinnedToCore(WiFi_config_page, "WiFi_config_page", 4096, this, 1, NULL, 0);
+        instance->_dnsServer->processNextRequest();
+        vTaskDelay(pdMS_TO_TICKS(100));
     }
-    provisioner_running = true;
-   
+}
+void CommsHandler::WiFi_config_handle_root(AsyncWebServerRequest *request)
+{
+
+    request->send_P(200, "text/html", FULL_CONFIG_PAGE);
+}
+
+/* ------------------------ STATION CONFIG FUNCTIONS ------------------------ */
+void CommsHandler::StationScanCallbackStart(AsyncWebServerRequest *request)
+{
+    ESP_LOGI("WiFi Card", "Callback Received: Scanning for networks");
+    // Start Asynchronous scan for WiFi networks
+    WiFi.scanNetworks(true);
+    // Get the number of networks found
+    int num_networks = WiFi.scanComplete();
+    // Send the number of networks found
+    AsyncResponseStream *response = request->beginResponseStream("text/html");
+    response->print("YEET");
+
+    request->send(response);
+}
+
+void CommsHandler::StationScanCallbackReturn(AsyncWebServerRequest *request)
+{
+    // Get the number of networks found
+    int num_networks = WiFi.scanComplete();
+    ESP_LOGI("WiFi Card", "Callback Received: Returning [%d] networks", num_networks);
+    // Send the number of networks found
+    JsonDocument jsonDoc;
+    JsonArray networks = jsonDoc.to<JsonArray>();
+    JsonObject net_stat = networks.add<JsonObject>();
+    net_stat["num_networks"] = num_networks;
+
+    for (int i = 0; i < num_networks; i++)
+    {
+        JsonObject network = networks.add<JsonObject>();
+        network["ssid"] = WiFi.SSID(i);
+        network["rssi"] = WiFi.RSSI(i);
+        network["encryption"] = WiFi.encryptionType(i);
+    }
+    String jsonString;
+    serializeJson(jsonDoc, jsonString);
+
+    AsyncResponseStream *response = request->beginResponseStream("application/json");
+    response->print(jsonString);
+    request->send(response);
+}
+
+void CommsHandler::StationSetConfig(AsyncWebServerRequest *request)
+{
+    int params = request->params();
+    ESP_LOGI("Access Point Card", "Callback Received [Params: %d]", params);
+    for (int i = 0; i < params; i++)
+    {
+        AsyncWebParameter *p = request->getParam(i);
+        ESP_LOGI("Access Point Card", "POST[%s]: %s", p->name().c_str(), p->value().c_str());
+        if (strcmp(p->name().c_str(), "stationssid") == 0)
+        {
+            setConfigOptionString("stationssid", p->value().c_str());
+        }
+        else if (strcmp(p->name().c_str(), "stationpass") == 0)
+        {
+            setConfigOptionString("stationpass", p->value().c_str());
+        }
+    }
+    AsyncResponseStream *response = request->beginResponseStream("text/html");
+    vTaskDelay(pdMS_TO_TICKS(10000));
+    response->print("testing2222");
+    request->send(response);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -122,7 +250,6 @@ bool CommsHandler::WiFi_connect()
     if (WiFi.status() != WL_CONNECTED)
     {
         ESP_LOGE(WIFI_TAG, "Not connected to WiFi, running configurator");
-        WiFi_config_init();
         return false;
     }
 
@@ -306,21 +433,4 @@ void CommsHandler::MQTT_init()
     Comm_state = Comm_Off;
     xTaskCreatePinnedToCore(MQTT_manage_task, "MQTT_manage_task", 4096, this, 1, NULL, 1);
     return void();
-}
-
-void CommsHandler::temp_debug_task(void *pvParameters)
-{
-    auto *instance = static_cast<CommsHandler *>(pvParameters);
-    for (;;)
-    {
-        vTaskDelay(pdMS_TO_TICKS(5000));
-    }
-}
-
-void CommsHandler::temp_debug()
-{
-    ESP_LOGI("CommsHandler", "Temp debug function");
-    provisioner_running = false;
-    WiFi_config_init();
-    xTaskCreatePinnedToCore(temp_debug_task, "temp_debug_task", 4096, this, 1, NULL, 1);
 }

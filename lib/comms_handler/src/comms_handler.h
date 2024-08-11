@@ -4,14 +4,18 @@
 #include "comms_config.h"
 #include <Arduino.h>
 #include <A76XX.h>
-#include "freertos/FreeRTOS.h"
-#include "freertos/queue.h"
-#include "freertos/task.h"
-#include "freertos/timers.h"
-#include "freertos/event_groups.h"
+#include <freertos/FreeRTOS.h>
+#include <freertos/queue.h>
+#include <freertos/task.h>
+#include <freertos/timers.h>
+#include <freertos/event_groups.h>
 #include <WiFi.h>
-#include <WiFiProvisioner.h>
 #include <MQTT.h>
+
+#include <ArduinoJson.h>
+#include <Preferences.h>
+#include <ESPAsyncWebServer.h>
+#include <DNSServer.h>
 
 enum WiFi_State
 {
@@ -49,16 +53,28 @@ struct MQTT_pub_t
 class CommsHandler
 {
 public:
+    String getConfigOptionString(const char *option, const char *default_value);
+    bool setConfigOptionString(const char *option, const char *value);
+    void WiFi_config_page_init();
+    static void WiFi_config_page_task(void *pvParameters);
+    void WiFi_config_handle_root(AsyncWebServerRequest *request);
+
+    // Page callbacks
+    void StationScanCallbackStart(AsyncWebServerRequest *request);
+    void StationScanCallbackReturn(AsyncWebServerRequest *request);
+    void StationSetConfig(AsyncWebServerRequest *request);
+
     void MQTT_queue_pub(const char *topic, const char *message, int qos);
     bool MQTT_sub(const char *topic);
-    static void MQTT_manage_task(void* pvParameters);
+    static void MQTT_manage_task(void *pvParameters);
     void MQTT_init();
 
-    static void WiFi_config_page(void* pvParameters);   
-    void WiFi_config_init();
+    // Server stuff
+    AsyncWebServer *_server;
+    DNSServer *_dnsServer;
+    IPAddress _ap_ip;
+    IPAddress _net_msk;
 
-    static void temp_debug_task(void *pvParameters);
-    void temp_debug();
 
 private:
     bool LTE_init();
@@ -72,6 +88,14 @@ private:
     bool WiFi_pub(const char *topic, const char *message, int qos);
     bool WiFi_disable();
 
+    Preferences _configops;
+    const char *_conf_namespace = "comms_handler";
+
+    
+
+    const byte _dns_port = 53;
+
+
     Comm_State Comm_state;
 
     A76XX *LTE_modem;
@@ -82,9 +106,6 @@ private:
 
     A76XXMQTTClient *LTE_mqtt;
     MQTTClient *WiFi_mqtt;
-
-    WiFiProvisioner::WiFiProvisioner WiFi_prov;
-
 
     QueueHandle_t MQTT_pub_queue;
 

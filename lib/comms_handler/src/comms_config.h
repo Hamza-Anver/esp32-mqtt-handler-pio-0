@@ -1,14 +1,5 @@
 #define DEBUG_SERIAL true
 #define DEBUG_TIMEOUT 5000
-#if defined DEBUG_SERIAL
-   #define debug_begin(x)        Serial.begin(x)
-   #define debug(x)                   Serial.print(x)
-   #define debugln(x)                 Serial.println(x)
-#else
-   #define debug_begin(x)
-   #define debug(x)
-   #define debugln(x)
-#endif
 
 // Device configuration
 #define UUID 100
@@ -20,7 +11,6 @@
 
 // MQTT configuration
 #define MQTT_CLIENT_ID "default_client_test"
-#define QOS_LEVEL 0
 #define MQTT_PORT 1883
 #define MQTT_KEEPALIVE 15
 #define MQTT_CLEAN_SESSION true
@@ -41,7 +31,7 @@
 
 // default AP settings
 #define WIFI_SSID_AP "config_1337_100"
-#define WIFI_PASS_AP "password"
+#define WIFI_PASS_AP ""
 
 // Debug STA settings
 #define WIFI_SSID_DEF "Hamza Pixel 6a"
@@ -56,3 +46,8 @@
 // Interval in ms to check again to switch back to primary comms method
 #define PRIMARY_CHECK_TIME_MS 30000
 
+/* -------------------------------------------------------------------------- */
+/*                             CONFIG PAGE OPTIONS                            */
+/* -------------------------------------------------------------------------- */
+#define INI_FILE "/config.ini"
+#define FACTORY_OPEN_CONFIG_AP_ALWAYS true
