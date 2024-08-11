@@ -63,6 +63,9 @@ public:
     void StationScanCallbackStart(AsyncWebServerRequest *request);
     void StationScanCallbackReturn(AsyncWebServerRequest *request);
     void StationSetConfig(AsyncWebServerRequest *request);
+    void StationSendUpdate(AsyncWebServerRequest *request);
+
+    void AccessPointSetConfig(AsyncWebServerRequest *request);
 
     void MQTT_queue_pub(const char *topic, const char *message, int qos);
     bool MQTT_sub(const char *topic);
@@ -74,6 +77,7 @@ public:
     DNSServer *_dnsServer;
     IPAddress _ap_ip;
     IPAddress _net_msk;
+    const byte _dns_port = 53;
 
 
 private:
@@ -91,10 +95,7 @@ private:
     Preferences _configops;
     const char *_conf_namespace = "comms_handler";
 
-    
-
-    const byte _dns_port = 53;
-
+    int wifi_config_attempts;
 
     Comm_State Comm_state;
 

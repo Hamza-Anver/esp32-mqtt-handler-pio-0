@@ -41,14 +41,14 @@ void CommsHandler::WiFi_config_page_init()
     WiFi.mode(WIFI_AP_STA);
     WiFi.softAPConfig(_ap_ip, _ap_ip, _net_msk);
 
-    if (strlen(getConfigOptionString("appassword", WIFI_SSID_AP).c_str()) < 8)
+    if (strlen(getConfigOptionString("appass", WIFI_PASS_AP).c_str()) < 8)
     {
         WiFi.softAP(getConfigOptionString("apssid", WIFI_SSID_AP).c_str());
     }
     else
     {
         WiFi.softAP(getConfigOptionString("apssid", WIFI_SSID_AP).c_str(),
-                    getConfigOptionString("appassword", WIFI_PASS_AP).c_str());
+                    getConfigOptionString("appass", WIFI_PASS_AP).c_str());
     }
     // Wait for a second for AP to boot up
     vTaskDelay(pdMS_TO_TICKS(1000));
@@ -74,8 +74,13 @@ void CommsHandler::WiFi_config_page_init()
                 { this->StationScanCallbackStart(request); });
     _server->on("/getscan", HTTP_GET, [this](AsyncWebServerRequest *request)
                 { this->StationScanCallbackReturn(request); });
-    _server->on("/stationcfg",[this](AsyncWebServerRequest *request)
+    _server->on("/stationcfg", [this](AsyncWebServerRequest *request)
                 { this->StationSetConfig(request); });
+    _server->on("/stationcfgupdate", [this](AsyncWebServerRequest *request)
+                { this->StationSendUpdate(request); });
+
+    _server->on("/apcfg", [this](AsyncWebServerRequest *request)
+                { this->AccessPointSetConfig(request); });
 
     xTaskCreate(WiFi_config_page_task, "WiFi_config_page_task", 4096, this, 1, NULL);
 
@@ -140,12 +145,13 @@ void CommsHandler::StationScanCallbackReturn(AsyncWebServerRequest *request)
 
 void CommsHandler::StationSetConfig(AsyncWebServerRequest *request)
 {
+    wifi_config_attempts = 0;
     int params = request->params();
-    ESP_LOGI("Access Point Card", "Callback Received [Params: %d]", params);
+    ESP_LOGI("StationConfig", "Callback Received [Params: %d]", params);
     for (int i = 0; i < params; i++)
     {
         AsyncWebParameter *p = request->getParam(i);
-        ESP_LOGI("Access Point Card", "POST[%s]: %s", p->name().c_str(), p->value().c_str());
+        ESP_LOGI("StationConfig", "POST[%s]: %s", p->name().c_str(), p->value().c_str());
         if (strcmp(p->name().c_str(), "stationssid") == 0)
         {
             setConfigOptionString("stationssid", p->value().c_str());
@@ -155,9 +161,134 @@ void CommsHandler::StationSetConfig(AsyncWebServerRequest *request)
             setConfigOptionString("stationpass", p->value().c_str());
         }
     }
-    AsyncResponseStream *response = request->beginResponseStream("text/html");
-    vTaskDelay(pdMS_TO_TICKS(10000));
-    response->print("testing2222");
+
+    JsonDocument responsedoc;
+    responsedoc["endpoint"] = "/stationcfgupdate";
+    responsedoc["updateid"] = "stationupdate";
+    responsedoc["updatemsg"] = "<p class='update'> Connecting to WiFi Network </p>";
+    responsedoc["timeout"] = "1000";
+    String jsonString;
+    serializeJson(responsedoc, jsonString);
+
+    AsyncResponseStream *response = request->beginResponseStream("application/json");
+    response->print(jsonString.c_str());
+    request->send(response);
+}
+
+void CommsHandler::StationSendUpdate(AsyncWebServerRequest *request)
+{
+    wifi_config_attempts++;
+    JsonDocument responsedoc;
+
+    String ssid = getConfigOptionString("stationssid", WIFI_SSID_DEF).c_str();
+    String pass = getConfigOptionString("stationpass", WIFI_PASS_DEF).c_str();
+
+    ESP_LOGI("StationConfig", "Attempting connection with SSID [%s] and password [%s]", ssid.c_str(), pass.c_str());
+
+    WiFi.begin(ssid.c_str(), pass.c_str());
+    if (WiFi.status() != WL_CONNECTED)
+    {
+        if (wifi_config_attempts > 5)
+        {
+            ESP_LOGE("StationConfig", "Failed to connect to WiFi");
+            responsedoc["updateid"] = "stationupdate";
+            responsedoc["updatemsg"] = "<p class='updatebad'> Failed To Connect To WiFi </p>";
+        }
+        else
+        {
+            ESP_LOGI("StationConfig", "Failed to connect to WiFi, retrying");
+            responsedoc["endpoint"] = "/stationcfgupdate";
+            responsedoc["updateid"] = "stationupdate";
+            responsedoc["updatemsg"] = "<p class='update'> Attempting to connect ... </p>";
+            responsedoc["timeout"] = "1000";
+        }
+    }
+    else
+    {
+        responsedoc["updateid"] = "stationupdate";
+        responsedoc["updatemsg"] = "<p class='updategood'> Connected to WiFi network! </p>";
+    }
+
+    String jsonString;
+    serializeJson(responsedoc, jsonString);
+
+    AsyncResponseStream *response = request->beginResponseStream("application/json");
+    response->print(jsonString.c_str());
+    request->send(response);
+}
+
+/* ---------------------- ACCESS POINT CONFIG FUNCTION ---------------------- */
+void CommsHandler::AccessPointSetConfig(AsyncWebServerRequest *request)
+{
+    int params = request->params();
+    ESP_LOGI("StationConfig", "Callback Received [Params: %d]", params);
+    String apssid = "";
+    String appass = "";
+    for (int i = 0; i < params; i++)
+    {
+        AsyncWebParameter *p = request->getParam(i);
+        ESP_LOGI("StationConfig", "POST[%s]: %s", p->name().c_str(), p->value().c_str());
+        if (strcmp(p->name().c_str(), "apssid") == 0)
+        {
+            apssid = p->value();
+        }
+        else if (strcmp(p->name().c_str(), "appass") == 0)
+        {
+            appass = p->value();
+        }
+    }
+
+    String validationresponse = "";
+
+    if (apssid.length() < 1 || apssid.length() > 32)
+    {
+        validationresponse += "SSID is not the right length \n";
+    }
+
+    // Check if all characters are valid (alphanumeric or allowed special characters)
+    for (int i = 0; i < apssid.length(); i++)
+    {
+        char c = apssid.charAt(i);
+        if (!(isAlphaNumeric(c) || c == '-' || c == '_' || c == '.' || c == ' '))
+        {
+            validationresponse += "SSID has unallowed character(s) \n";
+        }
+    }
+
+    if ((appass.length() < 8 || appass.length() > 63 ) && appass.length() != 0)
+    {
+        validationresponse += "Password is not 0 or between 8 and 64 (inclusive) characters long \n";
+    }
+
+    // Check if all characters are valid printable ASCII characters
+    for (int i = 0; i < appass.length(); i++)
+    {
+        char c = appass.charAt(i);
+        if (c < 32 || c > 126)
+        { // ASCII 32 to 126 are printable characters
+            validationresponse += "Password contains unprintable characters \n";
+        }
+    }
+    JsonDocument responsedoc;
+    if(validationresponse!=""){
+        // i.e. validation failed
+        responsedoc["updateid"] = "apupdate";
+        validationresponse = "<p class='updatebad'>" +validationresponse + "</p>";
+        responsedoc["updatemsg"] = validationresponse.c_str();
+    }else{
+        responsedoc["updateid"] = "apupdate";
+        responsedoc["updatemsg"] = "<p class='updategood'>AP Config seems valid and has been saved!</p>";
+        // Save to flash here
+        setConfigOptionString("apssid", apssid.c_str());
+        setConfigOptionString("appass", appass.c_str());
+
+    }
+    
+    String jsonString;
+    serializeJson(responsedoc, jsonString);
+
+    AsyncResponseStream *response = request->beginResponseStream("application/json");
+    response->print(jsonString.c_str());
     request->send(response);
 }
 

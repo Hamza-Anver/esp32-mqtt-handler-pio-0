@@ -1,7 +1,6 @@
 #include "webpage.h"
 #include <Arduino.h>
-
-extern const char FULL_CONFIG_PAGE[] PROGMEM = R"rawliteral(
+const char FULL_CONFIG_PAGE[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
 <html lang="en">
 
@@ -43,7 +42,7 @@ extern const char FULL_CONFIG_PAGE[] PROGMEM = R"rawliteral(
                 --accent-text: var(--bg);
                 --code: #f06292;
                 --preformatted: #ccc;
-                --disabled: #111
+                --disabled: #111;
             }
 
             img,
@@ -694,6 +693,13 @@ extern const char FULL_CONFIG_PAGE[] PROGMEM = R"rawliteral(
         }
     </style>
     <style>
+        article {
+            margin-top: 0.5rem;
+            margin-bottom: 2rem;
+            border: 0.15rem solid var(--border);
+            box-shadow: 0 0 1rem #000;
+        }
+
         button,
         input {
             width: 100%;
@@ -711,6 +717,44 @@ extern const char FULL_CONFIG_PAGE[] PROGMEM = R"rawliteral(
             background-color: var(--accent);
             color: var(--accent-text)
         }
+
+        .btn-subtle {
+            margin: 0.1rem;
+            background-color: var(--accent-bg);
+            color: var(--accent);
+            border: 1px solid var(--accent);
+            border-radius: var(--standard-border-radius);
+            cursor: pointer;
+        }
+
+        .btn-subtle:hover {
+            background-color: var(--accent);
+            color: var(--accent-text);
+        }
+
+        .updategood {
+            background: rgba(0, 122, 12, 0.247);
+            border: 2px solid rgba(0, 122, 12, 0.935);
+            border-radius: var(--standard-border-radius);
+            margin: 2rem 0;
+            padding: 1.5rem
+        }
+
+        .updatebad {
+            background: rgba(122, 0, 0, 0.313);
+            border: 2px solid rgba(122, 0, 0, 0.935);
+            border-radius: var(--standard-border-radius);
+            margin: 2rem 0;
+            padding: 1.5rem
+        }
+
+        .update {
+            background: var(--accent-bg);
+            border: 2px solid var(--border);
+            border-radius: var(--standard-border-radius);
+            margin: 2rem 0;
+            padding: 1.5rem
+        }
     </style>
 </head>
 
@@ -724,22 +768,25 @@ extern const char FULL_CONFIG_PAGE[] PROGMEM = R"rawliteral(
     <article>
         <h3>Access Point Configuration</h3>
         <form id="apcfg" onsubmit="fieldSetSendData(event,'apcfg','apcfg')">
-            <fieldset>
-                <label for="apssid">Access Point SSID</label>
-                <input id="apssid" type="text" name="apssid" value="" placeholder="SSID" />
-                <label for="appass">Access Point Password (Leave Blank for none)</label>
-                <input id="appass" type="password" name="appass" value="" placeholder="Password" />
-                <input type="checkbox" id="appass-toggle" onclick="fieldSetTogglePassword('appass')">
-                Show Password
-                </input>
-                <br>
-                <button type="submit" name="connbtn">Connect To Network</button>
-            </fieldset>
+            <label for="apalways">
+                <input type="checkbox" id="apalways" name="apalways" checked /> Turn on AP always (even when connected
+                to WiFi)
+            </label>
+            <label for="apssid">Access Point SSID</label>
+            <input id="apssid" type="text" name="apssid" value="" placeholder="SSID" />
+            <label for="appass">Access Point Password</label>
+            <input id="appass" type="password" name="appass" value="" placeholder="Password (leave empty for none)" />
+            <input type="checkbox" id="appass-toggle" name="appass-toggle" onclick="fieldSetTogglePassword('appass')" />
+            Show Password
+            <br>
+            <button type="submit" name="connbtn">Save Access Point Config</button>
+            <div id="apupdate">
+
+            </div>
         </form>
     </article>
     <article>
         <h3> WiFi Configuration </h3>
-        <button onclick="StartWiFiScan();" id="stationscan-btn">Scan for WiFi Networks</button>
         <table>
             <thead>
                 <tr>
@@ -750,23 +797,29 @@ extern const char FULL_CONFIG_PAGE[] PROGMEM = R"rawliteral(
             </thead>
             <tbody id="stationnetworks-table">
                 <tr>
-                    <td colspan='3' class="hint">No Networks To Display</td>
+                    <td colspan='3' class='hint'>No Networks to Show</td>
                 </tr>
             </tbody>
+            <tr>
+                <td colspan='3'><button class="btn-subtle" onclick="StartWiFiScan();" id="stationscan-btn">Scan for WiFi
+                        Networks</button></td>
+            </tr>
         </table>
         <form id="stationcfg" onsubmit="fieldSetSendData(event,'stationcfg','stationcfg')">
-            <fieldset>
-                <label for="stationssid">Station SSID</label>
-                <input id="stationssid" type="text" name="stationssid" value="" placeholder="SSID" />
-                <label for="stationssid">Station Password</label>
-                <input id="stationpass" type="password" name="stationpass" value="" placeholder="Password" />
-                <input type="checkbox" id="stationpass-toggle" onclick="fieldSetTogglePassword('stationpass')">
-                Show Password
-                </input>
-                <br>
-                <button type="submit" name="connbtn">Connect To Network</button>
-            </fieldset>
+            <label for="stationssid">Station SSID</label>
+            <input id="stationssid" type="text" name="stationssid" value="" placeholder="SSID" />
+            <label for="stationssid">Station Password</label>
+            <input id="stationpass" type="password" name="stationpass" value="" placeholder="Password" />
+            <input type="checkbox" id="stationpass-toggle" onclick="fieldSetTogglePassword('stationpass')">
+            Show Password
+            </input>
+            <br>
+            <br>
+            <button type="submit" name="connbtn">Connect To Network</button>
         </form>
+        <div id="stationupdate">
+
+        </div>
     </article>
     <footer>
         example footer
@@ -785,7 +838,7 @@ extern const char FULL_CONFIG_PAGE[] PROGMEM = R"rawliteral(
             }
         }
 
-        function fieldSetSendData(event, id, endpoint, updatestat_id="") {
+        function fieldSetSendData(event, id, endpoint, updatestat_id = "") {
             event.preventDefault();
             var form = document.getElementById(id);
             var formData = new FormData(form);
@@ -794,8 +847,14 @@ extern const char FULL_CONFIG_PAGE[] PROGMEM = R"rawliteral(
             req.open('POST', endpoint, true);
             req.onload = function () {
                 if (this.readyState == 4 && this.status == 200) {
-                    console.log("Form Submitted Successfully");
-                    console.log(this.responseText);
+                    try {
+                        var jsonResponse = JSON.parse(this.responseText);
+                        console.log("Form JSON returned: ", jsonResponse);
+                        fieldSetUpdate(jsonResponse);
+                    } catch (error){
+                        console.error("Form Submit Error: ", error)
+                    }
+
                 }
                 else {
                     console.log("Error on Form Submit");
@@ -806,6 +865,41 @@ extern const char FULL_CONFIG_PAGE[] PROGMEM = R"rawliteral(
             };
             req.send(formData);
         }
+
+        function fieldSetUpdate(jsonResponse) {
+            if (jsonResponse.endpoint) {
+                var req = new XMLHttpRequest();
+                req.open('POST', jsonResponse.endpoint, true);
+                req.onload = function () {
+                    if (this.readyState == 4 && this.status == 200) {
+                        let jsonResponse = JSON.parse(this.responseText);
+                        console.log("Form update JSON parse: ", jsonResponse);
+                        if (jsonResponse.updateid && jsonResponse.updatemsg) {
+                            document.getElementById(jsonResponse.updateid).innerHTML = jsonResponse.updatemsg;
+                        }
+
+                        if (jsonResponse.timeout) {
+                            setTimeout(function () {
+                                fieldSetUpdate(jsonResponse);
+                            }, jsonResponse.timeout);
+                        }
+                    }
+                    else {
+                        console.log("Error on Form Update");
+                    }
+                };
+                req.onerror = function () {
+                    console.log("Error on Form Update");
+                };
+                req.send(null);
+            } else {
+                if (jsonResponse.updatemsg && jsonResponse.updateid) {
+                    console.log("Update form setting innerhtml of ["+ jsonResponse.updateid+ "] to ["+ jsonResponse.updatemsg+"]");
+                    document.getElementById(jsonResponse.updateid).innerHTML = jsonResponse.updatemsg;
+                }
+            }
+        }
+
 
         /*
         WIFI STATION CONFIGURATION
@@ -820,7 +914,7 @@ extern const char FULL_CONFIG_PAGE[] PROGMEM = R"rawliteral(
             // Do button disabling
             WiFiScanBtn.innerHTML = "Scanning...";
             WiFiScanBtn.disabled = true;
-            wifi_networks.innerHTML = "<tr><td colspan='3' class='hint'>No Networks To Display</td></tr>";
+            wifi_networks.innerHTML = "<tr><td colspan='3' class='hint'>Scanning for networks...</td></tr>";
             setTimeout(GetWiFiNetworks, 5000);
         };
 
@@ -877,5 +971,4 @@ extern const char FULL_CONFIG_PAGE[] PROGMEM = R"rawliteral(
     </script>
 </body>
 
-</html>
-)rawliteral";
+</html>)rawliteral";
