@@ -1,6 +1,7 @@
 #include "comms_handler.h"
 #include "A76XX.h"
 #include <Preferences.h>
+#include <ArduinoOTA.h>
 #include <esp_log.h>
 #include "webpage/webpage.h"
 
@@ -8,18 +9,36 @@
 /*                       CONFIGURATION HELPER FUNCTIONS                       */
 /* -------------------------------------------------------------------------- */
 
-void CommsHandler::factoryResetConfig()
+void CommsHandler::createJsonConfig(bool factoryreset)
 {
-    
-    // clear nvs namespace
-    _configops.begin(_conf_namespace, false);
-    _configops.clear();
-    _configops.end();
 
     // Retrieve and write factory defaults to NVS
     setDefaultJsonConfig(&_config_json);
-    writeJsonToNVS(&_config_json);
+    if (factoryreset)
+    {
+        // clear nvs namespace
+        _configops.begin(_conf_namespace, false);
+        _configops.clear();
+        _configops.end();
+        writeJsonToNVS(&_config_json);
+    }
+    else
+    {
+        // Get from storage
+        for (JsonPair kv : _config_json.as<JsonObject>())
+        {
+            // TODO: handle other data types
+            const char *key = kv.key().c_str();
+            const char *value = kv.value();
+            _config_json[key] = getConfigOptionString(key, value);
+        }
+    }
+
+    String jsonString;
+    serializeJsonPretty(_config_json, jsonString);
+    ESP_LOGI("createJsonConfig", "JSON: %s", jsonString.c_str());
 }
+
 void CommsHandler::writeJsonToNVS(JsonDocument *jsonsrc)
 {
     if (jsonsrc == nullptr)
@@ -29,7 +48,9 @@ void CommsHandler::writeJsonToNVS(JsonDocument *jsonsrc)
 
     for (JsonPair kv : (*jsonsrc).as<JsonObject>())
     {
-        setConfigOptionString(kv.key().c_str(), kv.value().as<String>().c_str());
+        const char *key = kv.key().c_str();
+        const char *value = kv.value();
+        setConfigOptionString(key, value);
     }
 
     // Output the default config for debug purposes
@@ -71,6 +92,7 @@ void CommsHandler::WiFi_config_page_init()
     _dnsServer = new DNSServer();
     _ap_ip = IPAddress(192, 168, 4, 1);
     _net_msk = IPAddress(255, 255, 255, 0);
+    createJsonConfig(false);
 
     WiFi.mode(WIFI_AP_STA);
     WiFi.softAPConfig(_ap_ip, _ap_ip, _net_msk);
@@ -89,6 +111,8 @@ void CommsHandler::WiFi_config_page_init()
 
     _dnsServer->setErrorReplyCode(DNSReplyCode::NoError);
     _dnsServer->start(_dns_port, "*", _ap_ip);
+
+    xTaskCreate(WiFi_config_page_task, "WiFi_config_page_task", 4096, this, 1, NULL);
 
     _server->on("/", [this](AsyncWebServerRequest *request)
                 { this->WiFi_config_handle_root(request); });
@@ -116,10 +140,13 @@ void CommsHandler::WiFi_config_page_init()
     _server->on("/apcfg", [this](AsyncWebServerRequest *request)
                 { this->AccessPointSetConfig(request); });
 
-    _server->on("/configfr", [this](AsyncWebServerRequest *request)
+    _server->on("/cfgfr", [this](AsyncWebServerRequest *request)
                 { this->factoryResetConfigCallback(request); });
 
-    xTaskCreate(WiFi_config_page_task, "WiFi_config_page_task", 4096, this, 1, NULL);
+    _server->on("/cfggetjson", HTTP_GET, [this](AsyncWebServerRequest *request)
+                { this->sendConfigJsonCallback(request); });
+
+    
 
     _server->begin();
 }
@@ -135,22 +162,23 @@ void CommsHandler::WiFi_config_page_task(void *pvParameters)
 }
 void CommsHandler::WiFi_config_handle_root(AsyncWebServerRequest *request)
 {
-
-    request->send_P(200, "text/html", FULL_CONFIG_PAGE);
+    AsyncWebServerResponse *response = request->beginResponse_P(200, "text/html", HTML_GZ_PROGMEM, HTML_GZ_PROGMEM_LEN);
+    response->addHeader("Content-Encoding", "gzip");
+    request->send(response);
 }
-
 
 /* -------------------------------------------------------------------------- */
 /*                       CONFIGURATION CONFIG FUNCTIONS                       */
 /* -------------------------------------------------------------------------- */
 void CommsHandler::sendConfigJsonCallback(AsyncWebServerRequest *request)
 {
+    setDefaultJsonConfig(&_config_json);
     String jsonString;
     serializeJson(_config_json, jsonString);
     AsyncResponseStream *response = request->beginResponseStream("application/json");
     response->print(jsonString);
     request->send(response);
-    ESP_LOGI("ConfigHandler", "Sent Config JSON");
+    ESP_LOGI("ConfigHandler", "Sent Config JSON: [%s]", jsonString.c_str());
 }
 
 void CommsHandler::handleConfigJsonCallback(AsyncWebServerRequest *request)
@@ -163,10 +191,6 @@ void CommsHandler::handleConfigJsonCallback(AsyncWebServerRequest *request)
         ESP_LOGI("ConfigHandler", "POST[%s]: %s", p->name().c_str(), p->value().c_str());
         if (strcmp(p->name().c_str(), "config") == 0)
         {
-            // Parse the JSON and write to NVS
-            DynamicJsonDocument jsonDoc(1024);
-            deserializeJson(jsonDoc, p->value());
-            writeJsonToNVS(&jsonDoc);
         }
     }
 
@@ -184,7 +208,7 @@ void CommsHandler::handleConfigJsonCallback(AsyncWebServerRequest *request)
 
 void CommsHandler::factoryResetConfigCallback(AsyncWebServerRequest *request)
 {
-    factoryResetConfig();
+    createJsonConfig(true);
     JsonDocument responsedoc;
     responsedoc["updateid"] = "configfrupdate";
     responsedoc["updatemsg"] = "<p class='updategood'> Configuration has been reset! </p>";
@@ -196,8 +220,6 @@ void CommsHandler::factoryResetConfigCallback(AsyncWebServerRequest *request)
     request->send(response);
     ESP_LOGI("ConfigHandler", "Factory Reset Config");
 }
-
-
 
 /* -------------------------------------------------------------------------- */
 /*                          STATION CONFIG FUNCTIONS                          */
@@ -234,6 +256,12 @@ void CommsHandler::StationScanCallbackReturn(AsyncWebServerRequest *request)
         network["rssi"] = WiFi.RSSI(i);
         network["encryption"] = WiFi.encryptionType(i);
     }
+    // Reset if scan is done and results sent
+    // Avoids polluting with old results
+    if (num_networks > 0)
+    {
+        WiFi.scanDelete();
+    }
     String jsonString;
     serializeJson(jsonDoc, jsonString);
 
@@ -251,13 +279,13 @@ void CommsHandler::StationSetConfig(AsyncWebServerRequest *request)
     {
         AsyncWebParameter *p = request->getParam(i);
         ESP_LOGI("StationConfig", "POST[%s]: %s", p->name().c_str(), p->value().c_str());
-        if (strcmp(p->name().c_str(), "stationssid") == 0)
+        if (strcmp(p->name().c_str(), "stassid") == 0)
         {
-            setConfigOptionString("stationssid", p->value().c_str());
+            setConfigOptionString("stassid", p->value().c_str());
         }
-        else if (strcmp(p->name().c_str(), "stationpass") == 0)
+        else if (strcmp(p->name().c_str(), "stapass") == 0)
         {
-            setConfigOptionString("stationpass", p->value().c_str());
+            setConfigOptionString("stapass", p->value().c_str());
         }
     }
 

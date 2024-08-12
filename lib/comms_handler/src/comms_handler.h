@@ -53,7 +53,7 @@ struct MQTT_pub_t
 class CommsHandler
 {
 public:
-    void factoryResetConfig();
+    void createJsonConfig(bool factoryreset);
     void writeJsonToNVS(JsonDocument *jsonsrc = nullptr);
     String getConfigOptionString(const char *option, const char *default_value);
     bool setConfigOptionString(const char *option, const char *value);

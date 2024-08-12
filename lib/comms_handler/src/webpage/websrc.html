@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
-    <title> SLT DL Configuration</title>
+    <title> SLT DL Configuration {UID2}</title>
     <style>
         :root,
         ::backdrop {
@@ -776,18 +776,71 @@
             padding: 20px;
             z-index: 1000;
         }
+
+        .sticky {
+            position: fixed;
+            height: 4rem;
+            left: 0;
+            top: 0;
+            z-index: 1000;
+            width: 100%;
+            background-color: var(--accent-bg);
+            border-bottom: 2px solid var(--border);
+            box-shadow: 0 0 1rem #000;
+        }
+
+        html {
+            scroll-padding: 5rem;
+        }
     </style>
 </head>
 
 <body>
     <header>
+        <nav class="sticky">
+            <a href="#" class="current">^</a>
+            <a href="#device">Device</a>
+            <a href="#ap">Access Point</a>
+            <a href="#station">Station</a>
+            <a href="#manage">Management</a>
+        </nav>
+        <br>
+        <br>
         <h2>SLT DL Config for {UUID}</h2>
         <dt>Built by Hamza Anver (2024)</dt>
     </header>
     <p></p>
     <!--CONFIG CARDS-->
-    <article>
-        <h3>Access Point Configuration</h3>
+    <article id="device">
+        <h3>Device Settings</h3>
+        <form id="metacfg" onsubmit="fieldSetSendData(event,'metacfg','metacfg')">
+            <label for="metauid">Device UID</label>
+            <input id="metauid" type="text" name="metauid" value="" placeholder="Leave blank for MAC" />
+            <label for="metaname">Device Name</label>
+            <input id="metaname" type="text" name="metauid" value="" placeholder="Human readable description" />
+
+            <button type="submit">Save Device Settings</button>
+            <div id="metaupdate">
+
+            </div>
+        </form>
+    </article>
+    <article id="OTA">
+        <h3>Over-The-Air Updates</h3>
+        <form id="otacfg" onsubmit="fieldSetSendData(event,'otacfg','otacfg')">
+            <label for="ota">Address for OTA images</label>
+            <input id="metauid" type="text" name="metauid" value="" placeholder="Leave blank for MAC" />
+            <label for="metaname">Device Name</label>
+            <input id="metaname" type="text" name="metauid" value="" placeholder="Human readable description" />
+
+            <button type="submit">Save Device Settings</button>
+            <div id="metaupdate">
+
+            </div>
+        </form>
+    </article>
+    <article id="ap">
+        <h3>Access Point</h3>
         <form id="apcfg" onsubmit="fieldSetSendData(event,'apcfg','apcfg')">
             <label for="apalways">
                 <input type="checkbox" id="apalways" name="apalways" checked /> Turn on AP always (even when connected
@@ -800,14 +853,14 @@
             <input type="checkbox" id="appass-toggle" name="appass-toggle" onclick="fieldSetTogglePassword('appass')" />
             Show Password
             <br>
-            <button type="submit" name="connbtn">Save Access Point Config</button>
+            <button type="submit">Save Access Point Config</button>
             <div id="apupdate">
 
             </div>
         </form>
     </article>
-    <article>
-        <h3> WiFi Configuration </h3>
+    <article id="station">
+        <h3>Station</h3>
         <table>
             <thead>
                 <tr>
@@ -827,23 +880,22 @@
             </tr>
         </table>
         <form id="stationcfg" onsubmit="fieldSetSendData(event,'stationcfg','stationcfg')">
-            <label for="stationssid">Station SSID</label>
-            <input id="stationssid" type="text" name="stationssid" value="" placeholder="SSID" />
-            <label for="stationssid">Station Password</label>
-            <input id="stationpass" type="password" name="stationpass" value="" placeholder="Password" />
-            <input type="checkbox" id="stationpass-toggle" onclick="fieldSetTogglePassword('stationpass')">
+            <label for="stassid">Station SSID</label>
+            <input id="stassid" type="text" name="stassid" value="" placeholder="SSID" />
+            <label for="stapass">Station Password</label>
+            <input id="stapass" type="password" name="stapass" value="" placeholder="Password" />
+            <input type="checkbox" id="stationpass-toggle" onclick="fieldSetTogglePassword('stapass')">
             Show Password
             </input>
             <br>
             <br>
-            <button type="submit" name="connbtn">Connect To Network</button>
+            <button type="submit">Connect To Network</button>
         </form>
         <div id="stationupdate">
 
         </div>
     </article>
-    <article>
-        <h3>Configuration</h3>
+    <article id="manage">
         <button class="btn-subtle-red" onclick="document.getElementById('configFRDialog').showModal();
                     document.getElementById('configfrupdate').innerHTML='';
                     document.getElementById('configFRCheckbox').checked = false;
@@ -858,12 +910,12 @@
                 <b>I understand that this action cannot be undone</b>
             </label>
             <br>
-            <form id="configFR" onsubmit="fieldSetSendData(event,'configFR','configfr')">
+            <form id="cfgfr" onsubmit="fieldSetSendData(event,'cfgfr','cfgfr')">
                 <button type="submit" id="configFRConfirmButton" disabled class="btn-subtle-red">Confirm Reset</button>
             </form>
             <br>
             <button id="configFRCancelButton"
-                onclick="document.getElementById('configFRDialog').close()">Cancel</button>
+                onclick="document.getElementById('configFRDialog').close()">Close</button>
             <div id="configfrupdate">
 
             </div>
@@ -905,11 +957,11 @@
 
                 }
                 else {
-                    console.log("Error on Form Submit");
+                    console.error("Error on Form Submit");
                 }
             };
             req.onerror = function () {
-                console.log("Error on Form Submit");
+                console.error("Error on Form Submit");
             };
             req.send(formData);
         }
@@ -933,11 +985,11 @@
                         }
                     }
                     else {
-                        console.log("Error on Form Update");
+                        console.error("Error on Form Update");
                     }
                 };
                 req.onerror = function () {
-                    console.log("Error on Form Update");
+                    console.error("Error on Form Update");
                 };
                 req.send(null);
             } else {
@@ -994,12 +1046,11 @@
                     }
                 }
                 else {
-                    showError("submit", "Error on Refresh", true);
+                    console.error("Error on WiFi Scan");
                 }
             };
             req.onerror = function () {
-                console.log("Error on Refresh..");
-                showError("submit", "Error on Refresh", true);
+                console.error("Error on WiFi Scan");
             };
             req.send(null);
         };
@@ -1017,7 +1068,41 @@
             }
         });
 
+        // Config JSON value writing
+        function getAndSetJsonConfig() {
+            var req = new XMLHttpRequest();
+            req.open('GET', "/cfggetjson", true);
+            req.onload = function () {
+                if (this.readyState == 4 && this.status == 200) {
+                    try {   
+                        var jsonResponse = JSON.parse(this.responseText);
+                    } catch (error) {
+                        console.eror("assignValuesFromJson", "Error parsing json config: ", error);
+                    }
+                    
+                    console.log("Config JSON returned: ", jsonResponse);
+                    for (var key in jsonResponse) {
+                        if (jsonResponse.hasOwnProperty(key)) {
+                            var element = document.getElementById(key);
+                            if (element) {
+                                element.value = jsonResponse[key];
+                            }
+                        }
+                    }
+                }
+                else {
+                    showError("assignValuesFromJson", "Error getting json config");
+                }
+            };
+            req.onerror = function () {
+                console.log("Error getting json config");
+                showError("assignValuesFromJson", "Error getting json config");
+            };
+            req.send(null);
+            console.log("Assigning JSON Data to Fields");
+        }
 
+        getAndSetJsonConfig();
     </script>
 </body>
 
