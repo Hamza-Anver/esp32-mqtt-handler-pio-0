@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
-    <title> SLT DL Configuration {UID2}</title>
+    <title> Configinator</title>
     <style>
         :root,
         ::backdrop {
@@ -806,7 +806,7 @@
         </nav>
         <br>
         <br>
-        <h2>SLT DL Config for {UUID}</h2>
+        <h2>Firmware ota update</h2>
         <dt>Built by Hamza Anver (2024)</dt>
     </header>
     <p></p>
@@ -914,12 +914,14 @@
                 <button type="submit" id="configFRConfirmButton" disabled class="btn-subtle-red">Confirm Reset</button>
             </form>
             <br>
-            <button id="configFRCancelButton"
-                onclick="document.getElementById('configFRDialog').close()">Close</button>
+            <button id="configFRCancelButton" onclick="document.getElementById('configFRDialog').close()">Close</button>
             <div id="configfrupdate">
 
             </div>
         </dialog>
+        <h2>Firmware Update</h2>
+        <form method='POST' action='/update' enctype='multipart/form-data'><input type='file' name='update'>
+        <input type='submit' value='Update'></form>
     </article>
     <footer>
         example footer
@@ -1074,12 +1076,12 @@
             req.open('GET', "/cfggetjson", true);
             req.onload = function () {
                 if (this.readyState == 4 && this.status == 200) {
-                    try {   
+                    try {
                         var jsonResponse = JSON.parse(this.responseText);
                     } catch (error) {
                         console.eror("assignValuesFromJson", "Error parsing json config: ", error);
                     }
-                    
+
                     console.log("Config JSON returned: ", jsonResponse);
                     for (var key in jsonResponse) {
                         if (jsonResponse.hasOwnProperty(key)) {

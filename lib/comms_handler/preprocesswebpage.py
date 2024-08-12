@@ -15,7 +15,7 @@ def auto_create_webpagecpp():
             dest_time = os.path.getmtime(dest_html_path)
             if src_time < dest_time:
                 print("No changes to webpage detected")
-                #return
+                return
             else:
                 print("Modifying webpage.cpp")
         else:
@@ -57,7 +57,7 @@ const uint8_t {variable_name}[] PROGMEM = {{
     with open(output_cpp_file, "w") as f:
         f.write(cpp_code)
 
-    print(f"C++ file '{output_cpp_file}' has been created successfully!")
+    print(f"C++ header file '{output_cpp_file}' has been created successfully!")
     print(f"Compressed size: {len(compressed_content)} bytes")
 
 auto_create_webpagecpp()

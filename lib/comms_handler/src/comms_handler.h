@@ -15,7 +15,9 @@
 #include <ArduinoJson.h>
 #include <Preferences.h>
 #include <ESPAsyncWebServer.h>
+#include <AsyncTCP.h>
 #include <DNSServer.h>
+#include <Update.h>
 
 enum WiFi_State
 {
