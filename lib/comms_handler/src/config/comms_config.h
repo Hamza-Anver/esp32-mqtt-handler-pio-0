@@ -51,3 +51,16 @@
 /* -------------------------------------------------------------------------- */
 #define INI_FILE "/config.ini"
 #define FACTORY_OPEN_CONFIG_AP_ALWAYS true
+
+/* -------------------------------------------------------------------------- */
+/*                  MODIFIABLE JSON CONFIGURATION VIA WEBPAGE                 */
+/* -------------------------------------------------------------------------- */
+#ifndef CONFIG_OPTIONS_H
+#define CONFIG_OPTIONS_H
+
+#include <Arduino.h>
+#include <ArduinoJson.h>
+
+void setDefaultJsonConfig(JsonDocument *config);
+
+#endif // CONFIG_OPTIONS_H

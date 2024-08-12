@@ -1,3 +1,6 @@
+#include "webpage.h"
+#include <Arduino.h>
+const char FULL_CONFIG_PAGE[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
 <html lang="en">
 
@@ -725,8 +728,22 @@
         }
 
         .btn-subtle:hover {
-            background-color: var(--accent);
-            color: var(--accent-text);
+            background-color: var(--accent) !important;
+            color: var(--accent-text) !important;
+        }
+
+        .btn-subtle-red {
+            margin: 0.1rem;
+            color: var(--accent);
+            background-color: rgba(122, 0, 0, 0.132);
+            border: 1px solid rgba(122, 0, 0, 0.935);
+            border-radius: var(--standard-border-radius);
+            cursor: pointer;
+        }
+
+        .btn-subtle-red:hover {
+            background-color: rgba(122, 0, 0, 0.431) !important;
+            border: 1px solid rgba(122, 0, 0, 0.935) !important;
         }
 
         .updategood {
@@ -751,6 +768,16 @@
             border-radius: var(--standard-border-radius);
             margin: 2rem 0;
             padding: 1.5rem
+        }
+
+        dialog {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            margin: 0;
+            padding: 20px;
+            z-index: 1000;
         }
     </style>
 </head>
@@ -818,6 +845,33 @@
 
         </div>
     </article>
+    <article>
+        <h3>Configuration</h3>
+        <button class="btn-subtle-red" onclick="document.getElementById('configFRDialog').showModal();
+                    document.getElementById('configfrupdate').innerHTML='';
+                    document.getElementById('configFRCheckbox').checked = false;
+                    document.getElementById('configFRConfirmButton').disabled = true;
+                    ">Factory
+            Reset</button>
+        <dialog id="configFRDialog">
+            <p>Are you sure you want to reset to factory defaults?</p>
+            <label>
+                <input type="checkbox" id="configFRCheckbox"
+                    onclick="document.getElementById('configFRConfirmButton').disabled = !document.getElementById('configFRCheckbox').checked">
+                <b>I understand that this action cannot be undone</b>
+            </label>
+            <br>
+            <form id="configFR" onsubmit="fieldSetSendData(event,'configFR','configfr')">
+                <button type="submit" id="configFRConfirmButton" disabled class="btn-subtle-red">Confirm Reset</button>
+            </form>
+            <br>
+            <button id="configFRCancelButton"
+                onclick="document.getElementById('configFRDialog').close()">Cancel</button>
+            <div id="configfrupdate">
+
+            </div>
+        </dialog>
+    </article>
     <footer>
         example footer
     </footer>
@@ -848,7 +902,7 @@
                         var jsonResponse = JSON.parse(this.responseText);
                         console.log("Form JSON returned: ", jsonResponse);
                         fieldSetUpdate(jsonResponse);
-                    } catch (error){
+                    } catch (error) {
                         console.error("Form Submit Error: ", error)
                     }
 
@@ -891,7 +945,7 @@
                 req.send(null);
             } else {
                 if (jsonResponse.updatemsg && jsonResponse.updateid) {
-                    console.log("Update form setting innerhtml of ["+ jsonResponse.updateid+ "] to ["+ jsonResponse.updatemsg+"]");
+                    console.log("Update form setting innerhtml of [" + jsonResponse.updateid + "] to [" + jsonResponse.updatemsg + "]");
                     document.getElementById(jsonResponse.updateid).innerHTML = jsonResponse.updatemsg;
                 }
             }
@@ -965,7 +1019,9 @@
                 ssid_input.value = target.cells[0].textContent;
             }
         });
+
+
     </script>
 </body>
 
-</html>
+</html>)rawliteral";

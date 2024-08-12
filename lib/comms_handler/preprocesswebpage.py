@@ -2,8 +2,8 @@ import os
 import time
 
 # This path may not always be right
-src_html_path = "lib/comms_handler/src/websrc.html"
-dest_html_path = "lib/comms_handler/src/webpage.cpp"
+src_html_path = "lib/comms_handler/src/webpage/websrc.html"
+dest_html_path = "lib/comms_handler/src/webpage/webpage.cpp"
 
 def auto_create_webpagecpp():
     if os.path.exists(src_html_path):

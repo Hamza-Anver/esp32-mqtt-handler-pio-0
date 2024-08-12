@@ -1,7 +1,7 @@
 #ifndef _COMMS_HANDLER
 #define _COMMS_HANDLER
 
-#include "comms_config.h"
+#include "config/comms_config.h"
 #include <Arduino.h>
 #include <A76XX.h>
 #include <freertos/FreeRTOS.h>
@@ -53,8 +53,16 @@ struct MQTT_pub_t
 class CommsHandler
 {
 public:
+    void factoryResetConfig();
+    void writeJsonToNVS(JsonDocument *jsonsrc = nullptr);
     String getConfigOptionString(const char *option, const char *default_value);
     bool setConfigOptionString(const char *option, const char *value);
+
+    // Configuration callbacks
+    void sendConfigJsonCallback(AsyncWebServerRequest *request);
+    void handleConfigJsonCallback(AsyncWebServerRequest *request);
+    void factoryResetConfigCallback(AsyncWebServerRequest *request);
+
     void WiFi_config_page_init();
     static void WiFi_config_page_task(void *pvParameters);
     void WiFi_config_handle_root(AsyncWebServerRequest *request);
@@ -79,7 +87,6 @@ public:
     IPAddress _net_msk;
     const byte _dns_port = 53;
 
-
 private:
     bool LTE_init();
     bool LTE_connect();
@@ -94,6 +101,7 @@ private:
 
     Preferences _configops;
     const char *_conf_namespace = "comms_handler";
+    JsonDocument _config_json;
 
     int wifi_config_attempts;
 

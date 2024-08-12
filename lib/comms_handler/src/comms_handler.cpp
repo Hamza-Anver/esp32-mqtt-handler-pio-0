@@ -2,13 +2,45 @@
 #include "A76XX.h"
 #include <Preferences.h>
 #include <esp_log.h>
-#include "webpage.h"
+#include "webpage/webpage.h"
 
 /* -------------------------------------------------------------------------- */
 /*                       CONFIGURATION HELPER FUNCTIONS                       */
 /* -------------------------------------------------------------------------- */
+
+void CommsHandler::factoryResetConfig()
+{
+    
+    // clear nvs namespace
+    _configops.begin(_conf_namespace, false);
+    _configops.clear();
+    _configops.end();
+
+    // Retrieve and write factory defaults to NVS
+    setDefaultJsonConfig(&_config_json);
+    writeJsonToNVS(&_config_json);
+}
+void CommsHandler::writeJsonToNVS(JsonDocument *jsonsrc)
+{
+    if (jsonsrc == nullptr)
+    {
+        jsonsrc = &_config_json;
+    }
+
+    for (JsonPair kv : (*jsonsrc).as<JsonObject>())
+    {
+        setConfigOptionString(kv.key().c_str(), kv.value().as<String>().c_str());
+    }
+
+    // Output the default config for debug purposes
+    String jsonString;
+    serializeJsonPretty((*jsonsrc), jsonString);
+    ESP_LOGI("writeJsonToNVS", "JSON: %s", jsonString.c_str());
+}
+
 String CommsHandler::getConfigOptionString(const char *option, const char *default_value)
 {
+    // TODO: handle other data types
     _configops.begin(_conf_namespace, true);
     String value = _configops.getString(option, default_value);
     _configops.end();
@@ -18,10 +50,12 @@ String CommsHandler::getConfigOptionString(const char *option, const char *defau
 
 bool CommsHandler::setConfigOptionString(const char *option, const char *value)
 {
+    // TODO: handle other data types
     _configops.begin(_conf_namespace, false);
     int retval = _configops.putString(option, value);
     _configops.end();
     ESP_LOGI("ConfigHelper", "Putting [%s] for key [%s] retval: [%d]", value, option, retval);
+    _config_json[option] = value;
     return (retval != 0);
 }
 
@@ -82,6 +116,9 @@ void CommsHandler::WiFi_config_page_init()
     _server->on("/apcfg", [this](AsyncWebServerRequest *request)
                 { this->AccessPointSetConfig(request); });
 
+    _server->on("/configfr", [this](AsyncWebServerRequest *request)
+                { this->factoryResetConfigCallback(request); });
+
     xTaskCreate(WiFi_config_page_task, "WiFi_config_page_task", 4096, this, 1, NULL);
 
     _server->begin();
@@ -102,7 +139,69 @@ void CommsHandler::WiFi_config_handle_root(AsyncWebServerRequest *request)
     request->send_P(200, "text/html", FULL_CONFIG_PAGE);
 }
 
-/* ------------------------ STATION CONFIG FUNCTIONS ------------------------ */
+
+/* -------------------------------------------------------------------------- */
+/*                       CONFIGURATION CONFIG FUNCTIONS                       */
+/* -------------------------------------------------------------------------- */
+void CommsHandler::sendConfigJsonCallback(AsyncWebServerRequest *request)
+{
+    String jsonString;
+    serializeJson(_config_json, jsonString);
+    AsyncResponseStream *response = request->beginResponseStream("application/json");
+    response->print(jsonString);
+    request->send(response);
+    ESP_LOGI("ConfigHandler", "Sent Config JSON");
+}
+
+void CommsHandler::handleConfigJsonCallback(AsyncWebServerRequest *request)
+{
+    int params = request->params();
+    ESP_LOGI("ConfigHandler", "Callback Received [Params: %d]", params);
+    for (int i = 0; i < params; i++)
+    {
+        AsyncWebParameter *p = request->getParam(i);
+        ESP_LOGI("ConfigHandler", "POST[%s]: %s", p->name().c_str(), p->value().c_str());
+        if (strcmp(p->name().c_str(), "config") == 0)
+        {
+            // Parse the JSON and write to NVS
+            DynamicJsonDocument jsonDoc(1024);
+            deserializeJson(jsonDoc, p->value());
+            writeJsonToNVS(&jsonDoc);
+        }
+    }
+
+    JsonDocument responsedoc;
+    responsedoc["updateid"] = "configupdate";
+    responsedoc["updatemsg"] = "<p class='updategood'> Configuration has been saved! </p>";
+    String jsonString;
+    serializeJson(responsedoc, jsonString);
+
+    AsyncResponseStream *response = request->beginResponseStream("application/json");
+    response->print(jsonString.c_str());
+    request->send(response);
+    ESP_LOGI("ConfigHandler", "Configuration Updated");
+}
+
+void CommsHandler::factoryResetConfigCallback(AsyncWebServerRequest *request)
+{
+    factoryResetConfig();
+    JsonDocument responsedoc;
+    responsedoc["updateid"] = "configfrupdate";
+    responsedoc["updatemsg"] = "<p class='updategood'> Configuration has been reset! </p>";
+    String jsonString;
+    serializeJson(responsedoc, jsonString);
+
+    AsyncResponseStream *response = request->beginResponseStream("application/json");
+    response->print(jsonString.c_str());
+    request->send(response);
+    ESP_LOGI("ConfigHandler", "Factory Reset Config");
+}
+
+
+
+/* -------------------------------------------------------------------------- */
+/*                          STATION CONFIG FUNCTIONS                          */
+/* -------------------------------------------------------------------------- */
 void CommsHandler::StationScanCallbackStart(AsyncWebServerRequest *request)
 {
     ESP_LOGI("WiFi Card", "Callback Received: Scanning for networks");
@@ -216,8 +315,9 @@ void CommsHandler::StationSendUpdate(AsyncWebServerRequest *request)
     response->print(jsonString.c_str());
     request->send(response);
 }
-
-/* ---------------------- ACCESS POINT CONFIG FUNCTION ---------------------- */
+/* -------------------------------------------------------------------------- */
+/*                        ACCESS POINT CONFIG FUNCTIONS                       */
+/* -------------------------------------------------------------------------- */
 void CommsHandler::AccessPointSetConfig(AsyncWebServerRequest *request)
 {
     int params = request->params();
@@ -255,7 +355,7 @@ void CommsHandler::AccessPointSetConfig(AsyncWebServerRequest *request)
         }
     }
 
-    if ((appass.length() < 8 || appass.length() > 63 ) && appass.length() != 0)
+    if ((appass.length() < 8 || appass.length() > 63) && appass.length() != 0)
     {
         validationresponse += "Password is not 0 or between 8 and 64 (inclusive) characters long \n";
     }
@@ -270,20 +370,22 @@ void CommsHandler::AccessPointSetConfig(AsyncWebServerRequest *request)
         }
     }
     JsonDocument responsedoc;
-    if(validationresponse!=""){
+    if (validationresponse != "")
+    {
         // i.e. validation failed
         responsedoc["updateid"] = "apupdate";
-        validationresponse = "<p class='updatebad'>" +validationresponse + "</p>";
+        validationresponse = "<p class='updatebad'>" + validationresponse + "</p>";
         responsedoc["updatemsg"] = validationresponse.c_str();
-    }else{
+    }
+    else
+    {
         responsedoc["updateid"] = "apupdate";
         responsedoc["updatemsg"] = "<p class='updategood'>AP Config seems valid and has been saved!</p>";
         // Save to flash here
         setConfigOptionString("apssid", apssid.c_str());
         setConfigOptionString("appass", appass.c_str());
-
     }
-    
+
     String jsonString;
     serializeJson(responsedoc, jsonString);
 
