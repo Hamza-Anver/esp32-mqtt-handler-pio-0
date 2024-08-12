@@ -77,6 +77,11 @@ public:
 
     void AccessPointSetConfig(AsyncWebServerRequest *request);
 
+
+    // Temp test function
+    static void TestOTAInternet(void *pvParameters);
+    void TestOTAInternetOutput(String message);
+
     void MQTT_queue_pub(const char *topic, const char *message, int qos);
     bool MQTT_sub(const char *topic);
     static void MQTT_manage_task(void *pvParameters);

@@ -3,6 +3,7 @@
 #include <Preferences.h>
 #include <esp_log.h>
 #include "webpage/webpage.h"
+#include <HTTPClient.h>
 
 /* -------------------------------------------------------------------------- */
 /*                       CONFIGURATION HELPER FUNCTIONS                       */
@@ -147,34 +148,35 @@ void CommsHandler::WiFi_config_page_init()
 
     // Simple Firmware Update Form
     _server->on("/update", HTTP_GET, [](AsyncWebServerRequest *request)
-              { request->send(200, "text/html", "<form method='POST' action='/update' enctype='multipart/form-data'><input type='file' name='update'><input type='submit' value='Update'></form>"); });
+                { request->send(200, "text/html", "<form method='POST' action='/update' enctype='multipart/form-data'><input type='file' name='update'><input type='submit' value='Update'></form>"); });
     _server->on("/update", HTTP_POST, [](AsyncWebServerRequest *request)
-              {
-    bool shouldReboot = !Update.hasError();
-    AsyncWebServerResponse *response = request->beginResponse(200, "text/plain", shouldReboot?"OK":"FAIL");
-    response->addHeader("Connection", "close");
-    request->send(response); }, [](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final)
-              {
-    if(!index){
-      Serial.printf("Update Start: %s\n", filename.c_str());
-      if(!Update.begin((ESP.getFreeSketchSpace() - 0x1000) & 0xFFFFF000)){
-        Update.printError(Serial);
-      }
-    }
-    if(!Update.hasError()){
-      if(Update.write(data, len) != len){
-        Update.printError(Serial);
-      }
-    }
-    if(final){
-      if(Update.end(true)){
-        Serial.printf("Update Success: %uB\n", index+len);
-      } else {
-        Update.printError(Serial);
-      }
+                {
+                    bool shouldReboot = !Update.hasError();
+                    AsyncWebServerResponse *response = request->beginResponse(200, "text/plain", shouldReboot?"OK":"FAIL");
+                    response->addHeader("Connection", "close");
+                    request->send(response); }, [](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final)
+                {
+                    if(!index){
+                    Serial.printf("Update Start: %s\n", filename.c_str());
+                    if(!Update.begin((ESP.getFreeSketchSpace() - 0x1000) & 0xFFFFF000)){
+                        Update.printError(Serial);
+                    }
+                    }
+                    if(!Update.hasError()){
+                    if(Update.write(data, len) != len){
+                        Update.printError(Serial);
+                    }
+                    }
+                    if(final){
+                    if(Update.end(true)){
+                        Serial.printf("Update Success: %uB\n", index+len);
+                    } else {
+                        Update.printError(Serial);
+                    }
     } });
 
     _server->begin();
+    xTaskCreate(TestOTAInternet, "TestOTAInternet", 4096, this, 1, NULL);
 }
 
 void CommsHandler::WiFi_config_page_task(void *pvParameters)
@@ -191,6 +193,44 @@ void CommsHandler::WiFi_config_handle_root(AsyncWebServerRequest *request)
     AsyncWebServerResponse *response = request->beginResponse_P(200, "text/html", HTML_GZ_PROGMEM, HTML_GZ_PROGMEM_LEN);
     response->addHeader("Content-Encoding", "gzip");
     request->send(response);
+}
+
+void CommsHandler::TestOTAInternetOutput(String message)
+{
+    ESP_LOGI("TestOTAInternet", "Message [%s]", message.c_str());
+}
+
+void CommsHandler::TestOTAInternet(void *pvParameters)
+{
+    auto *instance = static_cast<CommsHandler *>(pvParameters);
+    String messagefuckery;
+    instance->TestOTAInternetOutput("Started Task");
+    for (;;)
+    {
+        vTaskDelay(pdMS_TO_TICKS(5000));
+        if (WiFi.status() == WL_CONNECTED)
+        {
+            vTaskDelay(pdMS_TO_TICKS(1000));
+            HTTPClient http;
+            http.begin("http://www.google.com");
+            int httpCode = http.GET();
+            if (httpCode > 0)
+            {
+                ESP_LOGI("TestOTAInternet", "HTTP Code: [%d]", httpCode);
+                messagefuckery=String(httpCode);
+                instance->TestOTAInternetOutput(messagefuckery);
+            }
+            else
+            {
+                ESP_LOGE("TestOTAInternet", "HTTP Code: [%d]", httpCode);
+                messagefuckery=String(httpCode);
+                instance->TestOTAInternetOutput(messagefuckery);
+            }
+            http.end();
+        }else{
+            instance->TestOTAInternetOutput("Waiting for wifi...");
+        }
+    }
 }
 
 /* -------------------------------------------------------------------------- */
