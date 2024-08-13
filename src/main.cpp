@@ -1,15 +1,16 @@
 #include <Arduino.h>
 #include <comms_handler.h>
+#include "OTAUpdate.h"
 
 CommsHandler comms;
 unsigned long previousMillis;
 
+OTAUpdate ota("https://litter.catbox.moe/md08sc.bin");
+
 void setup()
 {
     comms.WiFi_config_page_init();
-    Serial.setDebugOutput(true);
 }
-
 
 void loop()
 {
@@ -28,9 +29,24 @@ void loop()
     //     message_count++;
     // }
 
-    while(true)
+    while (true)
     {
         delay(1000);
         ESP_LOGI("Main", "Free heap size: [%d], Max Free Heap Alloc: [%d]", esp_get_free_heap_size(), ESP.getMaxAllocHeap());
+        if (millis() - previousMillis > 10000)
+        {
+            previousMillis = millis();
+            if(WiFi.status() == WL_CONNECTED)
+            {
+                ESP_LOGI("Main", "WiFi connected. Starting OTA update...");
+                ota.performUpdate();
+            }
+            else
+            {
+                ESP_LOGE("Main", "No WiFi connection. OTA update aborted.");
+                continue;
+            }
+            
+        }
     }
 }

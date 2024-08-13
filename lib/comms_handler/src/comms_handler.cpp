@@ -176,7 +176,6 @@ void CommsHandler::WiFi_config_page_init()
     } });
 
     _server->begin();
-    xTaskCreate(TestOTAInternet, "TestOTAInternet", 4096, this, 1, NULL);
 }
 
 void CommsHandler::WiFi_config_page_task(void *pvParameters)
@@ -188,6 +187,9 @@ void CommsHandler::WiFi_config_page_task(void *pvParameters)
         vTaskDelay(pdMS_TO_TICKS(100));
     }
 }
+
+
+
 void CommsHandler::WiFi_config_handle_root(AsyncWebServerRequest *request)
 {
     AsyncWebServerResponse *response = request->beginResponse_P(200, "text/html", HTML_GZ_PROGMEM, HTML_GZ_PROGMEM_LEN);
@@ -195,43 +197,7 @@ void CommsHandler::WiFi_config_handle_root(AsyncWebServerRequest *request)
     request->send(response);
 }
 
-void CommsHandler::TestOTAInternetOutput(String message)
-{
-    ESP_LOGI("TestOTAInternet", "Message [%s]", message.c_str());
-}
 
-void CommsHandler::TestOTAInternet(void *pvParameters)
-{
-    auto *instance = static_cast<CommsHandler *>(pvParameters);
-    String messagefuckery;
-    instance->TestOTAInternetOutput("Started Task");
-    for (;;)
-    {
-        vTaskDelay(pdMS_TO_TICKS(5000));
-        if (WiFi.status() == WL_CONNECTED)
-        {
-            vTaskDelay(pdMS_TO_TICKS(1000));
-            HTTPClient http;
-            http.begin("http://www.google.com");
-            int httpCode = http.GET();
-            if (httpCode > 0)
-            {
-                ESP_LOGI("TestOTAInternet", "HTTP Code: [%d]", httpCode);
-                messagefuckery=String(httpCode);
-                instance->TestOTAInternetOutput(messagefuckery);
-            }
-            else
-            {
-                ESP_LOGE("TestOTAInternet", "HTTP Code: [%d]", httpCode);
-                messagefuckery=String(httpCode);
-                instance->TestOTAInternetOutput(messagefuckery);
-            }
-            http.end();
-        }else{
-            instance->TestOTAInternetOutput("Waiting for wifi...");
-        }
-    }
-}
 
 /* -------------------------------------------------------------------------- */
 /*                       CONFIGURATION CONFIG FUNCTIONS                       */
