@@ -2,6 +2,16 @@
 <html lang="en">
 
 <head>
+    stapass
+    /startscan
+    {{STA_GET_SCAN_ENDPOINT}}
+    {{STA_CONNECT_ENDPOINT}}
+    {{STA_GET_CONFIG_ENDPOINT}}
+    /stationcfg
+    {{STA_GET_JSON_CONFIG_ENDPOINT}}
+    {{STA_SET_JSON_CONFIG_ENDPOINT}}
+    {{STA_FACTORY_RESET_ENDPOINT}}
+    {{STA_UPDATE}}
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
     <title> Configinator</title>
@@ -806,7 +816,7 @@
         </nav>
         <br>
         <br>
-        <h2>Firmware ota update</h2>
+        <h2>/startscan</h2>
         <dt>Built by Hamza Anver (2024)</dt>
     </header>
     <p></p>
@@ -1008,7 +1018,7 @@
         */
         var WiFiScanBtn = document.getElementById("stationscan-btn");
         var wifi_networks = document.getElementById("stationnetworks-table");
-        var ssid_input = document.getElementById("stationssid");
+        var ssid_input = document.getElementById("stassid");
 
         function StartWiFiScan() {
             console.log("Sending Request for WiFi SSIDs");
@@ -1079,7 +1089,8 @@
                     try {
                         var jsonResponse = JSON.parse(this.responseText);
                     } catch (error) {
-                        console.eror("assignValuesFromJson", "Error parsing json config: ", error);
+                        console.error(this.responseText)
+                        console.error("assignValuesFromJson", "Error parsing json config: ", error);
                     }
 
                     console.log("Config JSON returned: ", jsonResponse);

@@ -2,83 +2,7 @@
 #include "A76XX.h"
 #include <Preferences.h>
 #include <esp_log.h>
-#include "webpage/webpage.h"
 #include <HTTPClient.h>
-
-/* -------------------------------------------------------------------------- */
-/*                       CONFIGURATION HELPER FUNCTIONS                       */
-/* -------------------------------------------------------------------------- */
-
-void CommsHandler::createJsonConfig(bool factoryreset)
-{
-
-    // Retrieve and write factory defaults to NVS
-    setDefaultJsonConfig(&_config_json);
-    if (factoryreset)
-    {
-        // clear nvs namespace
-        _configops.begin(_conf_namespace, false);
-        _configops.clear();
-        _configops.end();
-        writeJsonToNVS(&_config_json);
-    }
-    else
-    {
-        // Get from storage
-        for (JsonPair kv : _config_json.as<JsonObject>())
-        {
-            // TODO: handle other data types
-            const char *key = kv.key().c_str();
-            const char *value = kv.value();
-            _config_json[key] = getConfigOptionString(key, value);
-        }
-    }
-
-    String jsonString;
-    serializeJsonPretty(_config_json, jsonString);
-    ESP_LOGI("createJsonConfig", "JSON: %s", jsonString.c_str());
-}
-
-void CommsHandler::writeJsonToNVS(JsonDocument *jsonsrc)
-{
-    if (jsonsrc == nullptr)
-    {
-        jsonsrc = &_config_json;
-    }
-
-    for (JsonPair kv : (*jsonsrc).as<JsonObject>())
-    {
-        const char *key = kv.key().c_str();
-        const char *value = kv.value();
-        setConfigOptionString(key, value);
-    }
-
-    // Output the default config for debug purposes
-    String jsonString;
-    serializeJsonPretty((*jsonsrc), jsonString);
-    ESP_LOGI("writeJsonToNVS", "JSON: %s", jsonString.c_str());
-}
-
-String CommsHandler::getConfigOptionString(const char *option, const char *default_value)
-{
-    // TODO: handle other data types
-    _configops.begin(_conf_namespace, true);
-    String value = _configops.getString(option, default_value);
-    _configops.end();
-    ESP_LOGI("ConfigHelper", "Returning [%s] for key [%s]", value.c_str(), option);
-    return value;
-}
-
-bool CommsHandler::setConfigOptionString(const char *option, const char *value)
-{
-    // TODO: handle other data types
-    _configops.begin(_conf_namespace, false);
-    int retval = _configops.putString(option, value);
-    _configops.end();
-    ESP_LOGI("ConfigHelper", "Putting [%s] for key [%s] retval: [%d]", value, option, retval);
-    _config_json[option] = value;
-    return (retval != 0);
-}
 
 /* -------------------------------------------------------------------------- */
 /*                              WIFI CONFIG PAGE                              */
@@ -192,9 +116,9 @@ void CommsHandler::WiFi_config_page_task(void *pvParameters)
 
 void CommsHandler::WiFi_config_handle_root(AsyncWebServerRequest *request)
 {
-    AsyncWebServerResponse *response = request->beginResponse_P(200, "text/html", HTML_GZ_PROGMEM, HTML_GZ_PROGMEM_LEN);
-    response->addHeader("Content-Encoding", "gzip");
-    request->send(response);
+    //AsyncWebServerResponse *response = request->beginResponse_P(200, "text/html", HTML_GZ_PROGMEM, HTML_GZ_PROGMEM_LEN);
+    //response->addHeader("Content-Encoding", "gzip");
+    //request->send(response);
 }
 
 
@@ -366,6 +290,7 @@ void CommsHandler::StationSendUpdate(AsyncWebServerRequest *request)
     {
         responsedoc["updateid"] = "stationupdate";
         responsedoc["updatemsg"] = "<p class='updategood'> Connected to WiFi network! </p>";
+
     }
 
     String jsonString;
