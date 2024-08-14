@@ -132,6 +132,6 @@ def preprocess_webpage(env):
     else:
         raise Exception("ERROR: metaheaders.h not found!")
 
-Import("env")
-preprocess_webpage(env)
+Import("env") # type: ignore
+preprocess_webpage(env) # type: ignore
 
