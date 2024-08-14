@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
-    <title> Configinator</title>
+    <title> OTA TEST</title>
     <style>
         :root,
         ::backdrop {
@@ -806,8 +806,8 @@
         </nav>
         <br>
         <br>
-        <h2>/startscan</h2>
-        <dt>Built by Hamza Anver (2024)</dt>
+        <h2>Web Configinator</h2>
+        <dt>v1.0.13 Date: 2024-08-14 Time: 18:03:06 Git: main_35a7b6e</dt>
     </header>
     <p></p>
     <!--CONFIG CARDS-->
@@ -827,21 +827,23 @@
     </article>
     <article id="OTA">
         <h3>Over-The-Air Updates</h3>
-        <form id="otacfg" onsubmit="fieldSetSendData(event,'otacfg','otacfg')">
-            <label for="ota">Address for OTA images</label>
-            <input id="metauid" type="text" name="metauid" value="" placeholder="Leave blank for MAC" />
-            <label for="metaname">Device Name</label>
-            <input id="metaname" type="text" name="metauid" value="" placeholder="Human readable description" />
-
-            <button type="submit">Save Device Settings</button>
-            <div id="metaupdate">
+        <dt> DEBUG MODE </dt>
+        <form id="otacfg" onsubmit="fieldSetSendData(event,'otacfg','/updateotaconfig')">
+            <label for="otaurl">Address for OTA firmware over the internet</label>
+            <input id="otaurl" type="text" name="otaurl" value="" placeholder="https://github.com/eg.bin" />
+            <button type="submit">Check and Update</button>
+            <div id="otaupdate">
 
             </div>
+        </form>
+        <hr>
+        <form method='POST' action='/updateota' enctype='multipart/form-data'><input type='file' name='update'>
+            <input type='submit' value='Update from file'>
         </form>
     </article>
     <article id="ap">
         <h3>Access Point</h3>
-        <form id="apcfg" onsubmit="fieldSetSendData(event,'apcfg','apcfg')">
+        <form id="apcfg" onsubmit="fieldSetSendData(event,'apcfg','/apsetconfig')">
             <label for="apalways">
                 <input type="checkbox" id="apalways" name="apalways" checked /> Turn on AP always (even when connected
                 to WiFi)
@@ -879,7 +881,7 @@
                         Networks</button></td>
             </tr>
         </table>
-        <form id="stationcfg" onsubmit="fieldSetSendData(event,'stationcfg','stationcfg')">
+        <form id="stationcfg" onsubmit="fieldSetSendData(event,'stationcfg','/stationcfg')">
             <label for="stassid">Station SSID</label>
             <input id="stassid" type="text" name="stassid" value="" placeholder="SSID" />
             <label for="stapass">Station Password</label>
@@ -895,6 +897,7 @@
 
         </div>
     </article>
+    
     <article id="manage">
         <button class="btn-subtle-red" onclick="document.getElementById('configFRDialog').showModal();
                     document.getElementById('configfrupdate').innerHTML='';
@@ -910,7 +913,7 @@
                 <b>I understand that this action cannot be undone</b>
             </label>
             <br>
-            <form id="cfgfr" onsubmit="fieldSetSendData(event,'cfgfr','cfgfr')">
+            <form id="cfgfr" onsubmit="fieldSetSendData(event,'cfgfr','/factoryreset')">
                 <button type="submit" id="configFRConfirmButton" disabled class="btn-subtle-red">Confirm Reset</button>
             </form>
             <br>
@@ -919,12 +922,11 @@
 
             </div>
         </dialog>
-        <h2>Firmware Update</h2>
-        <form method='POST' action='/update' enctype='multipart/form-data'><input type='file' name='update'>
-        <input type='submit' value='Update'></form>
     </article>
     <footer>
-        example footer
+        Built for: nb-iot-nodemcu-32s-4mb <br> 
+        Version: v1.0.13 Date: 2024-08-14 Time: 18:03:06 Git: main_35a7b6e <br>
+        Bin File Name: nb-iot-nodemcu-32s-4mb-v1.0.13-20240814-180306-main-35a7b6e.bin
     </footer>
     <script>
         // Field set functions

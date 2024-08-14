@@ -5,8 +5,12 @@
 // DEFAULT VALUES FOR THE CONFIGURATIONS ARE IN THE CPP FILE
 #define ACCESSPOINT_SSID_KEY "apssid"
 #define ACCESSPOINT_PASS_KEY "appass"
+
 #define STATION_SSID_KEY "stassid"
 #define STATION_PASS_KEY "stapass"
+
+#define OTA_URL_KEY "otaurl"
+#define OTA_UPDATE_FREQUENCY_KEY "otafreq"
 
 
 #endif // FR_CONFIG_H

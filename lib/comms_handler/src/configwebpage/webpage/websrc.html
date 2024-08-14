@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
-    <title> Configinator</title>
+    <title>Config Page</title>
     <style>
         :root,
         ::backdrop {
@@ -779,7 +779,7 @@
 
         .sticky {
             position: fixed;
-            height: 4rem;
+            height: max-content;
             left: 0;
             top: 0;
             z-index: 1000;
@@ -806,8 +806,8 @@
         </nav>
         <br>
         <br>
-        <h2>{{STA_START_SCAN_ENDPOINT}}</h2>
-        <dt>Built by Hamza Anver (2024)</dt>
+        <h2>Web Configinator</h2>
+        <dt>{{VERSION_STRING}}</dt>
     </header>
     <p></p>
     <!--CONFIG CARDS-->
@@ -827,21 +827,23 @@
     </article>
     <article id="OTA">
         <h3>Over-The-Air Updates</h3>
-        <form id="otacfg" onsubmit="fieldSetSendData(event,'otacfg','otacfg')">
-            <label for="ota">Address for OTA images</label>
-            <input id="metauid" type="text" name="metauid" value="" placeholder="Leave blank for MAC" />
-            <label for="metaname">Device Name</label>
-            <input id="metaname" type="text" name="metauid" value="" placeholder="Human readable description" />
-
-            <button type="submit">Save Device Settings</button>
-            <div id="metaupdate">
+        <dt> DEBUG MODE </dt>
+        <form id="otacfg" onsubmit="fieldSetSendData(event,'otacfg','{{UPDATE_OTA_CONFIG_ENDPOINT}}')">
+            <label for="{{OTA_URL_KEY}}">Address for OTA firmware over the internet</label>
+            <input id="{{OTA_URL_KEY}}" type="text" name="{{OTA_URL_KEY}}" value="" placeholder="https://github.com/eg.bin" />
+            <button type="submit">Check and Update</button>
+            <div id="otaupdate">
 
             </div>
+        </form>
+        <hr>
+        <form method='POST' action='{{UPDATE_FILE_UPLOAD_ENDPOINT}}' enctype='multipart/form-data'><input type='file' name='update'>
+            <input type='submit' value='Update from file'>
         </form>
     </article>
     <article id="ap">
         <h3>Access Point</h3>
-        <form id="apcfg" onsubmit="fieldSetSendData(event,'apcfg','apcfg')">
+        <form id="apcfg" onsubmit="fieldSetSendData(event,'apcfg','{{AP_SET_CONFIG_ENDPOINT}}')">
             <label for="apalways">
                 <input type="checkbox" id="apalways" name="apalways" checked /> Turn on AP always (even when connected
                 to WiFi)
@@ -879,11 +881,11 @@
                         Networks</button></td>
             </tr>
         </table>
-        <form id="stationcfg" onsubmit="fieldSetSendData(event,'stationcfg','stationcfg')">
-            <label for="stassid">Station SSID</label>
-            <input id="stassid" type="text" name="stassid" value="" placeholder="SSID" />
-            <label for="stapass">Station Password</label>
-            <input id="stapass" type="password" name="stapass" value="" placeholder="Password" />
+        <form id="stationcfg" onsubmit="fieldSetSendData(event,'stationcfg','{{STA_SET_CONFIG_ENDPOINT}}')">
+            <label for="{{STATION_SSID_KEY}}">Station SSID</label>
+            <input id="{{STATION_SSID_KEY}}" type="text" name="{{STATION_SSID_KEY}}" value="" placeholder="SSID" />
+            <label for="{{STATION_PASS_KEY}}">Station Password</label>
+            <input id="{{STATION_PASS_KEY}}" type="password" name="{{STATION_PASS_KEY}}" value="" placeholder="Password" />
             <input type="checkbox" id="stationpass-toggle" onclick="fieldSetTogglePassword('stapass')">
             Show Password
             </input>
@@ -895,6 +897,7 @@
 
         </div>
     </article>
+    
     <article id="manage">
         <button class="btn-subtle-red" onclick="document.getElementById('configFRDialog').showModal();
                     document.getElementById('configfrupdate').innerHTML='';
@@ -910,7 +913,7 @@
                 <b>I understand that this action cannot be undone</b>
             </label>
             <br>
-            <form id="cfgfr" onsubmit="fieldSetSendData(event,'cfgfr','cfgfr')">
+            <form id="cfgfr" onsubmit="fieldSetSendData(event,'cfgfr','{{FACTORY_RESET_ENDPOINT}}')">
                 <button type="submit" id="configFRConfirmButton" disabled class="btn-subtle-red">Confirm Reset</button>
             </form>
             <br>
@@ -919,12 +922,11 @@
 
             </div>
         </dialog>
-        <h2>Firmware Update</h2>
-        <form method='POST' action='/update' enctype='multipart/form-data'><input type='file' name='update'>
-        <input type='submit' value='Update'></form>
     </article>
     <footer>
-        example footer
+        Built for: {{VERSION_ENVIRONMENT}} <br> 
+        Version: {{VERSION_STRING}} <br>
+        Bin File Name: {{VERSION_STRING_NO_SPACES}}.bin
     </footer>
     <script>
         // Field set functions

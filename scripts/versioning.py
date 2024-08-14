@@ -46,7 +46,7 @@ def generate_version_header(env):
 
 #define VERSION_ENVIRONMENT "{proj_env}"
 
-#define VERSION_STRING "v1.0.{commit_count} Date: {build_date} Time: {build_time} {branch}_{commit_hash}"
+#define VERSION_STRING "v1.0.{commit_count} Date: {build_date} Time: {build_time} Git: {branch}_{commit_hash}"
 #define VERSION_STRING_NO_SPACES "{proj_env}-v1.0.{commit_count}-{build_date_short}-{build_time_short}-{branch}-{commit_hash}"
 
 #endif // VERSION_H

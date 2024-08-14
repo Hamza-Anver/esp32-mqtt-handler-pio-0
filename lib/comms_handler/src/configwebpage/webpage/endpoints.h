@@ -11,7 +11,9 @@
 
 #define FACTORY_RESET_ENDPOINT "/factoryreset"
 
-#define UPDATE_FIRMWARE_ENDPOINT "/updateota"
+#define UPDATE_FILE_UPLOAD_ENDPOINT "/updateota"
+
+#define UPDATE_OTA_CONFIG_ENDPOINT "/updateotaconfig"
 
 #define CONFIG_JSON_GET_ENDPOINT "/cfggetjson"
 #define CONFIG_JSON_SET_ENDPOINT "/configsetjson"

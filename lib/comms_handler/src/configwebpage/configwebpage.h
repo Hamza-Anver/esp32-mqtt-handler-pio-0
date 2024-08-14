@@ -6,18 +6,13 @@
 #include <DNSServer.h>
 #include <ArduinoJson.h>
 #include "config/confighelper.h"
+#include "ota/otahelper.h"
 
 #include <freertos/FreeRTOS.h>
 
-#include <metaheaders.h>
-
-#include CONFIG_WEBPAGE_GZIP_HEADER
-#include CONFIG_KEYS_HEADER
-#include ENDPOINTS_HEADER
-
 class ConfigWebpage {
 public:
-    ConfigWebpage(ConfigHelper *config_helper = nullptr);
+    ConfigWebpage(ConfigHelper *config_helper = nullptr, OTAHelper *ota_helper = nullptr);
     
     static void ConfigServerTask(void *pvParameters);
 
@@ -28,7 +23,11 @@ public:
     void handleSendCurrentConfigJSON(AsyncWebServerRequest *request);
     void handleReceiveConfigJSON(AsyncWebServerRequest *request);
     void handleFactoryReset(AsyncWebServerRequest *request);
-    void handleUpdateFirmwareOTA(AsyncWebServerRequest *request);
+
+    void handleUpdateOTAConfig(AsyncWebServerRequest *request);
+    void handleUpdateOTAInternet(AsyncWebServerRequest *request);
+    void handleUpdateOTAUpload(AsyncWebServerRequest *request);
+    void handleUpdateOTANowRequest(AsyncWebServerRequest *request);
 
     void handleStationStartScan(AsyncWebServerRequest *request);
     void handleStationScanResults(AsyncWebServerRequest *request);
@@ -40,6 +39,7 @@ public:
     /* ---------------------- END OF CALL BACK FUNCTIONS ------------------------ */
 
     ConfigHelper *_config_helper;
+    OTAHelper *_ota_helper;
     AsyncWebServer *_server;
     DNSServer *_dnsServer;
     IPAddress _ap_ip;

@@ -2,7 +2,13 @@
 
 static const char *TAG = "ConfigWebpage";
 
-ConfigWebpage::ConfigWebpage(ConfigHelper *config_helper)
+#include <metaheaders.h>
+
+#include CONFIG_WEBPAGE_GZIP_HEADER
+#include CONFIG_KEYS_HEADER
+#include ENDPOINTS_HEADER
+
+ConfigWebpage::ConfigWebpage(ConfigHelper *config_helper, OTAHelper *ota_helper)
 {
     _server = new AsyncWebServer(80);
     _dnsServer = new DNSServer();
@@ -16,6 +22,15 @@ ConfigWebpage::ConfigWebpage(ConfigHelper *config_helper)
     else
     {
         _config_helper = config_helper;
+    }
+
+    if (ota_helper == nullptr)
+    {
+        _ota_helper = new OTAHelper(_config_helper);
+    }
+    else
+    {
+        _ota_helper = ota_helper;
     }
 
     // Start the access point
@@ -65,9 +80,20 @@ ConfigWebpage::ConfigWebpage(ConfigHelper *config_helper)
     _server->on(STA_SEND_UPDATE_ENDPOINT, [this](AsyncWebServerRequest *request)
                 { this->handleStationSendUpdate(request); });
 
+    // Access Point callbacks
+    _server->on(AP_SET_CONFIG_ENDPOINT, [this](AsyncWebServerRequest *request)
+                { this->handleAccessPointSetConfig(request); });
+
     // Config meta callbacks
     _server->on(CONFIG_JSON_GET_ENDPOINT, HTTP_GET, [this](AsyncWebServerRequest *request)
                 { this->handleSendCurrentConfigJSON(request); });
+    _server->on(FACTORY_RESET_ENDPOINT, [this](AsyncWebServerRequest *request)
+                { this->handleFactoryReset(request); });
+
+    // DEBUG OTA CALLBACK
+    // TODO: FIX THIS CALLBACK
+    _server->on(UPDATE_OTA_CONFIG_ENDPOINT, [this](AsyncWebServerRequest *request)
+                { this->handleUpdateOTANowRequest(request); });
 
     // Begin the server
     _server->begin();
@@ -102,6 +128,21 @@ void ConfigWebpage::handleSendCurrentConfigJSON(AsyncWebServerRequest *request)
     AsyncResponseStream *response = request->beginResponseStream("application/json");
     response->print(jsonString.c_str());
     request->send(response);
+}
+
+void ConfigWebpage::handleFactoryReset(AsyncWebServerRequest *request)
+{
+    _config_helper->restoreDefaultConfigJSON(true);
+    JsonDocument responsedoc;
+    responsedoc["updateid"] = "configfrupdate";
+    responsedoc["updatemsg"] = "<p class='updategood'> Configuration has been reset! </p>";
+    String jsonString;
+    serializeJson(responsedoc, jsonString);
+
+    AsyncResponseStream *response = request->beginResponseStream("application/json");
+    response->print(jsonString.c_str());
+    request->send(response);
+    ESP_LOGI("ConfigHandler", "Factory Reset Config");
 }
 
 /* ---------------------------- STATION FUNCTIONS --------------------------- */
@@ -176,7 +217,7 @@ void ConfigWebpage::handleStationSetConfig(AsyncWebServerRequest *request)
     }
 
     JsonDocument responsedoc;
-    responsedoc["endpoint"] = "/stationcfgupdate";
+    responsedoc["endpoint"] = STA_SEND_UPDATE_ENDPOINT;
     responsedoc["updateid"] = "stationupdate";
     responsedoc["updatemsg"] = "<p class='update'> Connecting to WiFi Network </p>";
     responsedoc["timeout"] = "1000";
@@ -237,7 +278,7 @@ void ConfigWebpage::handleStationSendUpdate(AsyncWebServerRequest *request)
         else
         {
             ESP_LOGI(TAG, "Failed to connect to WiFi, retrying");
-            responsedoc["endpoint"] = "/stationcfgupdate";
+            responsedoc["endpoint"] = STA_SEND_UPDATE_ENDPOINT;
             responsedoc["updateid"] = "stationupdate";
             responsedoc["updatemsg"] = "<p class='update'> Attempting to connect ... </p>";
             responsedoc["timeout"] = "1000";
@@ -257,4 +298,118 @@ void ConfigWebpage::handleStationSendUpdate(AsyncWebServerRequest *request)
     AsyncResponseStream *response = request->beginResponseStream("application/json");
     response->print(jsonString.c_str());
     request->send(response);
+}
+
+/* ---------------------- ACCESS POINT CONFIG FUNCTION ---------------------- */
+void ConfigWebpage::handleAccessPointSetConfig(AsyncWebServerRequest *request)
+{
+    int params = request->params();
+    ESP_LOGI("StationConfig", "Callback Received [Params: %d]", params);
+    String apssid = "";
+    String appass = "";
+    for (int i = 0; i < params; i++)
+    {
+        AsyncWebParameter *p = request->getParam(i);
+        ESP_LOGI("StationConfig", "POST[%s]: %s", p->name().c_str(), p->value().c_str());
+        if (strcmp(p->name().c_str(), ACCESSPOINT_SSID_KEY) == 0)
+        {
+            apssid = p->value();
+        }
+        else if (strcmp(p->name().c_str(), ACCESSPOINT_PASS_KEY) == 0)
+        {
+            appass = p->value();
+        }
+    }
+
+    String validationresponse = "";
+
+    if (apssid.length() < 1 || apssid.length() > 32)
+    {
+        validationresponse += "SSID is not the right length \n";
+    }
+
+    // Check if all characters are valid (alphanumeric or allowed special characters)
+    for (int i = 0; i < apssid.length(); i++)
+    {
+        char c = apssid.charAt(i);
+        if (!(isAlphaNumeric(c) || c == '-' || c == '_' || c == '.' || c == ' '))
+        {
+            validationresponse += "SSID has unallowed character(s) \n";
+        }
+    }
+
+    if ((appass.length() < 8 || appass.length() > 63) && appass.length() != 0)
+    {
+        validationresponse += "Password is not 0 or between 8 and 64 (inclusive) characters long \n";
+    }
+
+    // Check if all characters are valid printable ASCII characters
+    for (int i = 0; i < appass.length(); i++)
+    {
+        char c = appass.charAt(i);
+        if (c < 32 || c > 126)
+        { // ASCII 32 to 126 are printable characters
+            validationresponse += "Password contains unprintable characters \n";
+        }
+    }
+    JsonDocument responsedoc;
+    if (validationresponse != "")
+    {
+        // i.e. validation failed
+        responsedoc["updateid"] = "apupdate";
+        validationresponse = "<p class='updatebad'>" + validationresponse + "</p>";
+        responsedoc["updatemsg"] = validationresponse.c_str();
+    }
+    else
+    {
+        responsedoc["updateid"] = "apupdate";
+        responsedoc["updatemsg"] = "<p class='updategood'>AP Config seems valid and has been saved!</p>";
+        // Save to flash here
+        _config_helper->setConfigOption("apssid", apssid.c_str());
+        _config_helper->setConfigOption("appass", appass.c_str());
+    }
+
+    String jsonString;
+    serializeJson(responsedoc, jsonString);
+
+    AsyncResponseStream *response = request->beginResponseStream("application/json");
+    response->print(jsonString.c_str());
+    request->send(response);
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                OTA FUNCTIONS                               */
+/* -------------------------------------------------------------------------- */
+
+void ConfigWebpage::handleUpdateOTANowRequest(AsyncWebServerRequest *request)
+{
+    int params = request->params();
+    ESP_LOGI("OTAUpdate", "Callback Received [Params: %d]", params);
+    String updateURL = "";
+    for (int i = 0; i < params; i++)
+    {
+        AsyncWebParameter *p = request->getParam(i);
+        ESP_LOGI("OTAUpdate", "POST[%s]: %s", p->name().c_str(), p->value().c_str());
+        if (strcmp(p->name().c_str(), OTA_URL_KEY) == 0)
+        {
+            updateURL = p->value();
+        }
+    }
+
+    JsonDocument responsedoc;
+    responsedoc["updateid"] = "otaupdate";
+    if(updateURL != ""){
+        responsedoc["updatemsg"] = "<p class='updategood'> Checking URL for update </p>";
+    }else{
+        responsedoc["updatemsg"] = "<p class='updatebad'> No URL provided </p>";
+    }
+    
+    String jsonString;
+    AsyncResponseStream *response = request->beginResponseStream("application/json");
+    response->print(jsonString.c_str());
+    request->send(response);
+
+    if(updateURL!=""){
+        _ota_helper->CallOTAInternetUpdateAsync(updateURL);
+    }
 }

@@ -57,8 +57,9 @@ def html_to_progmem(html_file_path, output_cpp_file, variable_name="html_gz"):
 
     # Create the C++ code
     cpp_code = f"""
-#ifndef WEBPAGE_GZIP_H
-#define WEBPAGE_GZIP_H
+#include <Arduino.h>
+#include <pgmspace.h>
+#include "configwebpage/webpage/webpage.h"
 
 const size_t {variable_name}_LEN = {len(compressed_content)};
 
@@ -66,9 +67,6 @@ const uint8_t {variable_name}[] PROGMEM = {{
 {hex_array}
 }};
 
-
-
-#endif
 """
 
     # Write the C++ code to a file
@@ -88,7 +86,7 @@ script_dir = "lib/comms_handler/src/configwebpage/webpage"
 
 src_html_path = os.path.join(script_dir, "websrc.html")
 temp_html_path = os.path.join(script_dir, "prepped.html")
-dest_html_path = os.path.join(script_dir, "webpage.h")
+dest_html_path = os.path.join(script_dir, "webpage.cpp")
 
 src_header_endpoints = os.path.join(script_dir, "endpoints.h")
 
@@ -102,18 +100,23 @@ src_metadata = os.path.join(src_dir, "metadata.h")
 def preprocess_webpage(env):
     metaheader_path = os.path.join(env["PROJECT_INCLUDE_DIR"], "metaheaders.h")
     lib_dir = os.path.join(env["PROJECT_DIR"], "lib/comms_handler/src")
+    src_dir = env["PROJECT_DIR"]
     if(os.path.exists(metaheader_path)):
         
         metaheaders_dirs = extract_definitions(metaheader_path)
         header_defs = []
         for key, value in metaheaders_dirs.items():
             # Find the appropriate header file from value
-            test_path = os.path.join(lib_dir, value)
-            if os.path.exists(test_path):
-                print(f"Found metaheader [{key}] in directory '{test_path}'")
-                header_defs.append(extract_definitions(test_path))
+            lib_path = os.path.join(lib_dir, value)
+            src_path = os.path.join(src_dir, value)
+            if os.path.exists(lib_path):
+                print(f"Found metaheader [{key}] in directory '{lib_path}'")
+                header_defs.append(extract_definitions(lib_path))
+            elif os.path.exists(src_path):
+                print(f"Found metaheader [{key}] in directory '{src_path}'")
+                header_defs.append(extract_definitions(src_path))
             else:
-                print(f"WARNING: Metaheader directory '{test_path}' not found!")
+                print(f"WARNING: Metaheader directory '{lib_path}' and '{src_path}' not found!")
 
         # Output all the header definitions
         print("Found the following header definitions:")
