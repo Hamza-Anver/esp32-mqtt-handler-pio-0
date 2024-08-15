@@ -1,5 +1,6 @@
 #include "config/confighelper.h"
 #include <esp_log.h>
+#include <WiFi.h>
 
 static const char *TAG = "ConfigHelper";
 
@@ -22,14 +23,24 @@ ConfigHelper::~ConfigHelper()
     _config_json.clear();
 }
 
+String ConfigHelper::getDeviceMACString(){
+    String mac = WiFi.macAddress();
+    mac.replace(":", "");
+    ESP_LOGI(TAG, "Retrieved MAC Address as string [%s]", mac.c_str());
+    return mac;
+}
+
 void ConfigHelper::restoreDefaultConfigJSON(bool write_to_nvs)
 {
     // Is the clear necessary?
     _config_json.clear();
 
-
-
     /* ---------------------- DEFAULT CONFIGURATION VALUES ---------------------- */
+    _config_json[DEVICE_UID_KEY] = getDeviceMACString();
+    ESP_LOGI(TAG, "Factory UID (MAC Address) [%s]",  _config_json[DEVICE_UID_KEY].as<String>().c_str());
+
+    _config_json[DEVICE_NAME_KEY] = "SLT DL Debug NB IoT";
+
     _config_json[ACCESSPOINT_SSID_KEY] = "ESP_32_AP_mac";
     _config_json[ACCESSPOINT_PASS_KEY] = "";
     _config_json[STATION_SSID_KEY] = "Hamza Pixel 6a";
@@ -56,6 +67,8 @@ void ConfigHelper::loadConfigJSONFromNVS()
             getConfigOptionNVS(key, false);
         }
     }
+
+    // TODO: handle if factory options have more keys than in NVS
     _preferences.end();
 }
 
@@ -238,7 +251,9 @@ void ConfigHelper::setConfigOption(const char *key, const char *value, bool writ
 {
     if (_config_json[key].is<String>())
     {
-        _config_json[key] = value;
+        String temp = value;
+        _config_json[key] = temp;
+        ESP_LOGI(TAG, "Set [%s] to [%s]", key, _config_json[key].as<String>().c_str());
         if (write_to_nvs)
             setConfigOptionNVS(key);
     }

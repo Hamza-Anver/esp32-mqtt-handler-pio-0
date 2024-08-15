@@ -10,6 +10,7 @@
 #define AP_SET_CONFIG_ENDPOINT "/apsetconfig"
 
 #define FACTORY_RESET_ENDPOINT "/factoryreset"
+#define RESTART_DEVICE_ENDPOINT "/restartdevice"
 
 #define UPDATE_FILE_UPLOAD_ENDPOINT "/updateota"
 

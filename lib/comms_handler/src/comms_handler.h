@@ -55,39 +55,10 @@ struct MQTT_pub_t
 class CommsHandler
 {
 public:
-    void createJsonConfig(bool factoryreset);
-    void writeJsonToNVS(JsonDocument *jsonsrc = nullptr);
-    String getConfigOptionString(const char *option, const char *default_value);
-    bool setConfigOptionString(const char *option, const char *value);
-
-    // Configuration callbacks
-    void sendConfigJsonCallback(AsyncWebServerRequest *request);
-    void handleConfigJsonCallback(AsyncWebServerRequest *request);
-    void factoryResetConfigCallback(AsyncWebServerRequest *request);
-
-    void WiFi_config_page_init();
-    static void WiFi_config_page_task(void *pvParameters);
-    void WiFi_config_handle_root(AsyncWebServerRequest *request);
-
-    // Page callbacks
-    void StationScanCallbackStart(AsyncWebServerRequest *request);
-    void StationScanCallbackReturn(AsyncWebServerRequest *request);
-    void StationSetConfig(AsyncWebServerRequest *request);
-    void StationSendUpdate(AsyncWebServerRequest *request);
-
-    void AccessPointSetConfig(AsyncWebServerRequest *request);
-
     void MQTT_queue_pub(const char *topic, const char *message, int qos);
     bool MQTT_sub(const char *topic);
     static void MQTT_manage_task(void *pvParameters);
     void MQTT_init();
-
-    // Server stuff
-    AsyncWebServer *_server;
-    DNSServer *_dnsServer;
-    IPAddress _ap_ip;
-    IPAddress _net_msk;
-    const byte _dns_port = 53;
 
 private:
     bool LTE_init();

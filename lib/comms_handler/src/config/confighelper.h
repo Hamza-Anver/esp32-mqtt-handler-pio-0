@@ -11,6 +11,8 @@ class ConfigHelper {
         ConfigHelper(bool factoryreset);
         ~ConfigHelper();
 
+        String getDeviceMACString();
+
         void restoreDefaultConfigJSON(bool write_to_nvs = false);
         void loadConfigJSONFromNVS();
         void saveConfigJSONToNVS();

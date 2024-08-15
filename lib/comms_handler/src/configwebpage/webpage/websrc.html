@@ -716,12 +716,10 @@
         }
 
         .btn-subtle {
-            margin: 0.1rem;
             background-color: var(--accent-bg);
             color: var(--accent);
             border: 1px solid var(--accent);
             border-radius: var(--standard-border-radius);
-            cursor: pointer;
         }
 
         .btn-subtle:hover {
@@ -730,17 +728,28 @@
         }
 
         .btn-subtle-red {
-            margin: 0.1rem;
             color: var(--accent);
-            background-color: rgba(122, 0, 0, 0.132);
-            border: 1px solid rgba(122, 0, 0, 0.935);
+            background-color: rgba(122, 0, 0, 0.672);
+            border: 1px solid var(--accent);
             border-radius: var(--standard-border-radius);
-            cursor: pointer;
         }
 
         .btn-subtle-red:hover {
             background-color: rgba(122, 0, 0, 0.431) !important;
-            border: 1px solid rgba(122, 0, 0, 0.935) !important;
+            border: 1px solid rgb(122, 0, 0) !important;
+        }
+
+        .btn-group {
+            display: flex;
+            width: 100%;
+        }
+
+        .btn-narrow {
+
+            flex: 1;
+            width: auto;
+            max-width: 100%;
+            margin: 5px;
         }
 
         .updategood {
@@ -807,18 +816,44 @@
         <br>
         <br>
         <h2>Web Configinator</h2>
-        <dt>{{VERSION_STRING}}</dt>
+        <dt>Device UID: <div id="{{DEVICE_UID_KEY}}"></div>
+        </dt>
     </header>
+    <dialog id="updatedialog">
+        <div id="updatedialogmsg">Update message Goes here</div>
+        <hr>
+        <button id="updatedialogclose" onclick="document.getElementById('updatedialog').close()">Close</button>
+        <div id="dialogconfirmupdate">
+        </div>
+    </dialog>
+    <dialog id="confirmdialog">
+        <p id="confirmdialogmsg">Are you sure you want to do this?</p>
+        <label>
+            <input type="checkbox" id="dialogconfirmcheckbox"
+                onclick="document.getElementById('dialogconfirmbutton').disabled = !document.getElementById('dialogconfirmcheckbox').checked">
+            <b id="confirmdialogcheckboxmsg">I understand that this action cannot be undone</b>
+        </label>
+        <br>
+        <form id="confirmdialogform" onsubmit="">
+            <button type="submit" id="dialogconfirmbutton" disabled class="btn-subtle-red">Confirm</button>
+        </form>
+        <hr>
+        <button id="dialogconfirmcancel" onclick="document.getElementById('confirmdialog').close()">Close</button>
+        <div id="dialogconfirmupdate">
+
+        </div>
+    </dialog>
     <p></p>
     <!--CONFIG CARDS-->
     <article id="device">
         <h3>Device Settings</h3>
         <form id="metacfg" onsubmit="fieldSetSendData(event,'metacfg','metacfg')">
-            <label for="metauid">Device UID</label>
-            <input id="metauid" type="text" name="metauid" value="" placeholder="Leave blank for MAC" />
-            <label for="metaname">Device Name</label>
-            <input id="metaname" type="text" name="metauid" value="" placeholder="Human readable description" />
-
+            <label for="{{DEVICE_UID_KEY}}">Device UID</label>
+            <input id="{{DEVICE_UID_KEY}}" type="text" name="{{DEVICE_UID_KEY}}" value=""
+                placeholder="Leave blank for MAC address" />
+            <label for="{{DEVICE_NAME_KEY}}">Device Name</label>
+            <input id="{{DEVICE_NAME_KEY}}" type="text" name="{{DEVICE_NAME_KEY}}" value=""
+                placeholder="Human readable name" />
             <button type="submit">Save Device Settings</button>
             <div id="metaupdate">
 
@@ -826,20 +861,39 @@
         </form>
     </article>
     <article id="OTA">
-        <h3>Over-The-Air Updates</h3>
-        <dt> DEBUG MODE </dt>
+        <h3>Over-The-Air Firmware</h3>
         <form id="otacfg" onsubmit="fieldSetSendData(event,'otacfg','{{UPDATE_OTA_CONFIG_ENDPOINT}}')">
-            <label for="{{OTA_URL_KEY}}">Address for OTA firmware over the internet</label>
-            <input id="{{OTA_URL_KEY}}" type="text" name="{{OTA_URL_KEY}}" value="" placeholder="https://github.com/eg.bin" />
-            <button type="submit">Check and Update</button>
+            <label for="{{OTA_URL_KEY}}">URL for update JSON</label>
+            <input id="{{OTA_URL_KEY}}" type="text" name="{{OTA_URL_KEY}}" value=""
+                placeholder="https://github.com/update/eg.json" />
+            <label for="{{OTA_URL_KEY}}">Update frequency check (minutes)</label>
+            <input id="{{OTA_URL_KEY}}" type="number" name="{{OTA_URL_KEY}}" value=""
+                placeholder="How many minutes in between update checks" min="1" max="10000" />
+            <button type="submit">Save Auto OTA Config</button>
             <div id="otaupdate">
 
             </div>
         </form>
+        <button class="btn-subtle">Check for updates</button>
         <hr>
-        <form method='POST' action='{{UPDATE_FILE_UPLOAD_ENDPOINT}}' enctype='multipart/form-data'><input type='file' name='update'>
-            <input type='submit' value='Update from file'>
-        </form>
+        <details>
+            <summary>Other update options</summary>
+            <form id="otaimmediate" onsubmit="fieldSetSendData(event,'otacfg','{{UPDATE_OTA_CONFIG_ENDPOINT}}')">
+                <label for="{{OTA_URL_KEY}}">Immediate update from URL</label>
+                <input id="{{OTA_URL_KEY}}" type="text" name="{{OTA_URL_KEY}}" value=""
+                    placeholder="https://github.com/eg.bin" />
+                <button type="submit" class="btn-subtle">Update from bin URL</button>
+                <div id="otaupdate">
+
+                </div>
+            </form>
+            <hr>
+            <form method='POST' action='{{UPDATE_FILE_UPLOAD_ENDPOINT}}' enctype='multipart/form-data'><input
+                    type='file' name='update'>
+                <button type="submit" class="btn-subtle">Update from bin file</button>
+            </form>
+        </details>
+
     </article>
     <article id="ap">
         <h3>Access Point</h3>
@@ -848,10 +902,12 @@
                 <input type="checkbox" id="apalways" name="apalways" checked /> Turn on AP always (even when connected
                 to WiFi)
             </label>
-            <label for="apssid">Access Point SSID</label>
-            <input id="apssid" type="text" name="apssid" value="" placeholder="SSID" />
-            <label for="appass">Access Point Password</label>
-            <input id="appass" type="password" name="appass" value="" placeholder="Password (leave empty for none)" />
+            <label for="{{ACCESSPOINT_SSID_KEY}}">Access Point SSID</label>
+            <input id="{{ACCESSPOINT_SSID_KEY}}" type="text" name="{{ACCESSPOINT_SSID_KEY}}" value=""
+                placeholder="SSID" />
+            <label for="{{ACCESSPOINT_PASS_KEY}}">Access Point Password</label>
+            <input id="ACCESSPOINT_PASS_KEY" type="password" name="ACCESSPOINT_PASS_KEY" value=""
+                placeholder="Password (leave empty for none)" />
             <input type="checkbox" id="appass-toggle" name="appass-toggle" onclick="fieldSetTogglePassword('appass')" />
             Show Password
             <br>
@@ -885,7 +941,8 @@
             <label for="{{STATION_SSID_KEY}}">Station SSID</label>
             <input id="{{STATION_SSID_KEY}}" type="text" name="{{STATION_SSID_KEY}}" value="" placeholder="SSID" />
             <label for="{{STATION_PASS_KEY}}">Station Password</label>
-            <input id="{{STATION_PASS_KEY}}" type="password" name="{{STATION_PASS_KEY}}" value="" placeholder="Password" />
+            <input id="{{STATION_PASS_KEY}}" type="password" name="{{STATION_PASS_KEY}}" value=""
+                placeholder="Password" />
             <input type="checkbox" id="stationpass-toggle" onclick="fieldSetTogglePassword('stapass')">
             Show Password
             </input>
@@ -897,38 +954,73 @@
 
         </div>
     </article>
-    
-    <article id="manage">
-        <button class="btn-subtle-red" onclick="document.getElementById('configFRDialog').showModal();
-                    document.getElementById('configfrupdate').innerHTML='';
-                    document.getElementById('configFRCheckbox').checked = false;
-                    document.getElementById('configFRConfirmButton').disabled = true;
-                    ">Factory
-            Reset</button>
-        <dialog id="configFRDialog">
-            <p>Are you sure you want to reset to factory defaults?</p>
-            <label>
-                <input type="checkbox" id="configFRCheckbox"
-                    onclick="document.getElementById('configFRConfirmButton').disabled = !document.getElementById('configFRCheckbox').checked">
-                <b>I understand that this action cannot be undone</b>
-            </label>
-            <br>
-            <form id="cfgfr" onsubmit="fieldSetSendData(event,'cfgfr','{{FACTORY_RESET_ENDPOINT}}')">
-                <button type="submit" id="configFRConfirmButton" disabled class="btn-subtle-red">Confirm Reset</button>
-            </form>
-            <br>
-            <button id="configFRCancelButton" onclick="document.getElementById('configFRDialog').close()">Close</button>
-            <div id="configfrupdate">
+    <details id="system">
+        <summary>System</summary>
+        <div class="btn-group">
+            <button class="btn-subtle btn-narrow" onclick="confirmDialogHelper('Are you sure you want to factory reset?', 
+        'I know what I am doing',
+        'Restart', '{{RESTART_DEVICE_ENDPOINT}}')">Restart Device</button>
+            <button class="btn-subtle-red btn-narrow" onclick="confirmDialogHelper('Are you sure you want to factory reset?', 
+            'I know what I am doing',
+            'Factory Reset', '{{FACTORY_RESET_ENDPOINT}}')">Factory Reset</button>
 
-            </div>
-        </dialog>
-    </article>
+
+        </div>
+
+    </details>
+    <details id="metaconfig">
+        <summary>Configuration JSON</summary>
+        <button onclick="getCurrentJson('currentJsonText')"> Get Current JSON</button>
+        <div id="currentJsonText">
+
+        </div>
+    </details>
     <footer>
-        Built for: {{VERSION_ENVIRONMENT}} <br> 
+        Built for: {{VERSION_ENVIRONMENT}} <br>
         Version: {{VERSION_STRING}} <br>
         Bin File Name: {{VERSION_STRING_NO_SPACES}}.bin
     </footer>
     <script>
+        // Dialog confirm
+        var confirmdialog = document.getElementById('confirmdialog');
+        var confirmdialogform = document.getElementById('confirmdialogform');
+        var confirmdialogmsg = document.getElementById('confirmdialogmsg');
+        var confirmdialogcheckbox = document.getElementById('dialogconfirmcheckbox');
+        var confirmcheckboxmessage = document.getElementById('confirmdialogcheckboxmsg');
+        var confirmdialogbutton = document.getElementById('dialogconfirmbutton');
+        var confirmdialogcancel = document.getElementById('dialogconfirmcancel');
+
+        function confirmDialogHelper(message = "Are you sure you want to continue?",
+            checkboxmessage = "I know what I'm doing",
+            confirmbutton = "Confirm",
+            endpoint = "",
+            cancelbutton = "Cancel") {
+            if (endpoint != "") {
+                confirmdialogform.setAttribute('onSubmit', "fieldSetSendData(event,'confirmdialogform','" + endpoint + "')");
+            }
+
+            confirmdialogmsg.innerHTML = message;
+            confirmcheckboxmessage.innerHTML = checkboxmessage;
+            confirmdialogbutton.innerHTML = confirmbutton;
+            confirmdialogcancel.innerHTML = cancelbutton;
+            confirmdialogcheckbox.checked = false;
+            confirmdialogbutton.disabled = true;
+
+
+            document.getElementById('confirmdialog').showModal();
+        }
+
+        var updatedialog = document.getElementById('updatedialog');
+        var updatedialogmsg = document.getElementById('updatedialogmsg');
+
+        function updateDialogHelper(updatemsg = "Update received") {
+            if(confirmdialog.open){
+                confirmdialog.close()
+            }
+            updatedialogmsg.innerHTML = updatemsg;
+            document.getElementById('updatedialog').showModal();
+        }
+
         // Field set functions
         function fieldSetTogglePassword(id) {
             var input = document.getElementById(id);
@@ -944,9 +1036,14 @@
 
         function fieldSetSendData(event, id, endpoint, updatestat_id = "") {
             event.preventDefault();
-            var form = document.getElementById(id);
-            var formData = new FormData(form);
-            console.log(formData);
+            var target = document.getElementById(id);
+            // This bit is probably useless
+            if(target.tagName === "FORM"){
+                var sendData = new FormData(target);
+                console.log("Sending form", sendData);
+            }else{
+                sendData = null;
+            }
             var req = new XMLHttpRequest();
             req.open('POST', endpoint, true);
             req.onload = function () {
@@ -967,10 +1064,29 @@
             req.onerror = function () {
                 console.error("Error on Form Submit");
             };
-            req.send(formData);
+
+            req.send(sendData);
+
+
+            // Send as JSON
+            // var jsonForm = {};
+            // formData.forEach((value, key) => { jsonForm[key] = value }
+            // );
+            // jsonFormString = JSON.stringify(jsonForm);
+            // req.send(jsonFormString);
         }
 
         function fieldSetUpdate(jsonResponse) {
+
+            if (jsonResponse.updatemsg) {
+                if (jsonResponse.updateid && jsonResponse.updatemsg) {
+                    document.getElementById(jsonResponse.updateid).innerHTML = jsonResponse.updatemsg;
+                } else {
+                    console.log("Update message: ", jsonResponse.updatemsg);
+                    updateDialogHelper(jsonResponse.updatemsg);
+                }
+            }
+
             if (jsonResponse.endpoint) {
                 var req = new XMLHttpRequest();
                 req.open('POST', jsonResponse.endpoint, true);
@@ -978,14 +1094,13 @@
                     if (this.readyState == 4 && this.status == 200) {
                         let jsonResponse = JSON.parse(this.responseText);
                         console.log("Form update JSON parse: ", jsonResponse);
-                        if (jsonResponse.updateid && jsonResponse.updatemsg) {
-                            document.getElementById(jsonResponse.updateid).innerHTML = jsonResponse.updatemsg;
-                        }
 
                         if (jsonResponse.timeout) {
                             setTimeout(function () {
                                 fieldSetUpdate(jsonResponse);
                             }, jsonResponse.timeout);
+                        } else {
+                            fieldSetUpdate(jsonResponse);
                         }
                     }
                     else {
@@ -996,11 +1111,6 @@
                     console.error("Error on Form Update");
                 };
                 req.send(null);
-            } else {
-                if (jsonResponse.updatemsg && jsonResponse.updateid) {
-                    console.log("Update form setting innerhtml of [" + jsonResponse.updateid + "] to [" + jsonResponse.updatemsg + "]");
-                    document.getElementById(jsonResponse.updateid).innerHTML = jsonResponse.updatemsg;
-                }
             }
         }
 
@@ -1090,24 +1200,68 @@
                         if (jsonResponse.hasOwnProperty(key)) {
                             var element = document.getElementById(key);
                             if (element) {
-                                element.value = jsonResponse[key];
+                                if (element.tagName === "INPUT") {
+                                    if (element.getAttribute("type") === "checkbox") {
+                                        console.log("Setting checked [", key, "] to: ", jsonResponse[key]);
+                                        element.checked = jsonResponse[key];
+                                    } else {
+                                        console.log("Setting value for [", key, "] to: ", jsonResponse[key]);
+                                        element.value = jsonResponse[key];
+                                    }
+                                }
+                                else {
+                                    console.log("Setting innerHTML [", key, "] to: ", jsonResponse[key]);
+                                    element.innerHTML = jsonResponse[key];
+                                }
                             }
                         }
                     }
                 }
                 else {
-                    showError("assignValuesFromJson", "Error getting json config");
+                    console.error("assignValuesFromJson", "Error getting json config");
                 }
             };
             req.onerror = function () {
-                console.log("Error getting json config");
-                showError("assignValuesFromJson", "Error getting json config");
+                console.error("assignValuesFromJson", "Error getting json config");
             };
             req.send(null);
             console.log("Assigning JSON Data to Fields");
         }
 
         getAndSetJsonConfig();
+
+        var currentJson = {}
+        function getCurrentJson(targetid = "") {
+            if (targetid === "") {
+                console.error("getCurrentJson: target not specified");
+            }
+            var req = new XMLHttpRequest();
+            req.open('GET', "/cfggetjson", true);
+            req.onload = function () {
+                if (this.readyState == 4 && this.status == 200) {
+                    try {
+                        var jsonResponse = JSON.parse(this.responseText);
+                    } catch (error) {
+                        console.error(this.responseText)
+                        console.error("getCurrentJson", "Error parsing json config: ", error);
+                    }
+
+                    console.log("Config JSON returned: ", jsonResponse);
+                    let jsonString = JSON.stringify(jsonResponse, undefined, 2);
+                    document.getElementById(targetid).innerHTML = "<pre>\n<code>" +
+                        jsonString +
+                        "</code>\n</pre>";
+                }
+                else {
+                    console.error("getCurrentJson", "Error getting json config");
+                }
+            };
+            req.onerror = function () {
+                console.error("getCurrentJson", "Error getting json config");
+            };
+            req.send(null);
+            console.log("Getting JSON to show");
+        }
     </script>
 </body>
 

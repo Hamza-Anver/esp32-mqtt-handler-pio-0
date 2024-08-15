@@ -22,7 +22,9 @@ public:
 
     void handleSendCurrentConfigJSON(AsyncWebServerRequest *request);
     void handleReceiveConfigJSON(AsyncWebServerRequest *request);
+
     void handleFactoryReset(AsyncWebServerRequest *request);
+    void handleDeviceRestart(AsyncWebServerRequest *request);
 
     void handleUpdateOTAConfig(AsyncWebServerRequest *request);
     void handleUpdateOTAInternet(AsyncWebServerRequest *request);
