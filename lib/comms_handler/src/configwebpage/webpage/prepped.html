@@ -722,21 +722,33 @@
             border-radius: var(--standard-border-radius);
         }
 
-        .btn-subtle:hover {
+        .btn-subtle:hover,
+        summary:hover {
             background-color: var(--accent) !important;
             color: var(--accent-text) !important;
         }
 
+        summary {
+            background-color: var(--accent-bg);
+            box-shadow: 0rem 0.3rem 0.5rem rgba(0, 0, 0, 0.379);
+        }
+
+        details {
+            overflow: hidden;
+            background-color: var(--bg);
+        }
+
         .btn-subtle-red {
-            color: var(--accent);
-            background-color: rgba(122, 0, 0, 0.672);
-            border: 1px solid var(--accent);
+            color: #fa533ddb;
+            background-color: rgba(122, 0, 0, 0.142);
+            border: 1px solid red;
             border-radius: var(--standard-border-radius);
         }
 
         .btn-subtle-red:hover {
-            background-color: rgba(122, 0, 0, 0.431) !important;
-            border: 1px solid rgb(122, 0, 0) !important;
+            color: #ff2104db;
+            background-color: rgb(138, 0, 0) !important;
+            border: 1px solid red !important;
         }
 
         .btn-group {
@@ -777,13 +789,7 @@
         }
 
         dialog {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            margin: 0;
-            padding: 20px;
-            z-index: 1000;
+            width: min(45rem, 90%);
         }
 
         .sticky {
@@ -801,6 +807,30 @@
         html {
             scroll-padding: 5rem;
         }
+
+        .infogood {
+
+            text-align: center;
+            color: rgb(0, 165, 0);
+            background-color: rgba(0, 122, 12, 0.247);
+        }
+
+        .infobad {
+            text-align: center;
+            color: #fa533ddb;
+            background-color: rgba(122, 0, 0, 0.142);
+        }
+
+        .infomeh {
+            text-align: center;
+            color: var(--text)
+        }
+
+        .infonone {
+            text-align: center;
+            font-style: italic;
+            color: var(--text-light)
+        }
     </style>
 </head>
 
@@ -808,17 +838,20 @@
     <header>
         <nav class="sticky">
             <a href="#" class="current">^</a>
-            <a href="#device">Device</a>
-            <a href="#ap">Access Point</a>
-            <a href="#station">Station</a>
-            <a href="#manage">Management</a>
+            <a href="#statuscard">Status</a>
+            <a href="#devicecard">Device</a>
+            <a href="#internetcard">Internet</a>
+            <a href="#apcard">Access Point</a>
+            <a href="#otacard">OTA</a>
+            <a href="#systemcard">System</a>
         </nav>
         <br>
         <br>
-        <h2>Web Configinator</h2>
-        <dt>Device UID: <div id="deviceid"></div>
+        <h2>OTA CATBOX VERSION</h2>
+        <dt>SERIES</div>
         </dt>
     </header>
+    <!--DIALOG POPUPS-->
     <dialog id="updatedialog">
         <div id="updatedialogmsg">Update message Goes here</div>
         <hr>
@@ -844,10 +877,40 @@
         </div>
     </dialog>
     <p></p>
+
+    <!--STATUS CARD-->
+    <article id="statuscard">
+        <h3>Device Status</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Parameter</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Device UID</td>
+                    <td class="infomeh" id="deviceid">Loading...</td>
+                </tr>
+                <tr>
+                    <td>WiFi</td>
+                    <td class="infobad" id="deviceid">Disconnected</td>
+                </tr>
+                <tr>
+                    <td>LTE</td>
+                    <td class="infogood" id="deviceid">Disconnected</td>
+                </tr>
+            </tbody>
+        </table>
+        <div class="hint" id="statusupdatetimer">Not updated yet...</div>
+    </article>
+
     <!--CONFIG CARDS-->
-    <article id="device">
+    <article id="devicecard">
         <h3>Device Settings</h3>
-        <form id="metacfg" onsubmit="fieldSetSendData(event,'metacfg','metacfg')">
+        <form id="/devicecfg"
+            onsubmit="fieldSetSendData(event,'/devicecfg','/devicecfg')">
             <label for="deviceid">Device UID</label>
             <input id="deviceid" type="text" name="deviceid" value=""
                 placeholder="Leave blank for MAC address" />
@@ -860,16 +923,90 @@
             </div>
         </form>
     </article>
-    <article id="OTA">
+    <article id="internetcard">
+        <h3>Internet Access</h3>
+        <form>
+            <label for="prefconnect">Networking Mode:</label>
+            <select id="prefconnect" name="prefconnect">
+                <option selected value="wifionly">Use WiFi only</option>
+                <option value="lteonly">Use LTE only</option>
+                <option value="ltethenwifi">Prioritize WiFi (uses both)</option>
+                <option value="wifithenlte">Prioritize LTE (uses both)</option>
+            </select>
+            <button type="submit">Save Networking Preferences</button>
+        </form>
+        <hr>
+        <details>
+            <summary>Mobile Data</summary>
+        </details>
+        <details>
+            <summary>WiFi</summary>
+            <table>
+                <thead>
+                    <tr>
+                        <th>SSID</th>
+                        <th>RSSI</th>
+                        <th>Security</th>
+                    </tr>
+                </thead>
+                <tbody id="stationnetworks-table">
+                    <tr>
+                        <td colspan='3' class='hint'>No Networks to Show</td>
+                    </tr>
+                </tbody>
+                <tr>
+                    <td colspan='3'><button class="btn-subtle" onclick="StartWiFiScan();" id="stationscan-btn">Scan for
+                            WiFi
+                            Networks</button></td>
+                </tr>
+            </table>
+            <form id="stationcfg" onsubmit="fieldSetSendData(event,'stationcfg','/stationcfg')">
+                <label for="stassid">Station SSID</label>
+                <input id="stassid" type="text" name="stassid" value="" placeholder="SSID" />
+                <label for="stapass">Station Password</label>
+                <input id="stapass" type="password" name="stapass" value=""
+                    placeholder="Password" />
+                <input type="checkbox" id="stationpass-toggle" onclick="fieldSetTogglePassword('stapass')">
+                Show Password
+                </input>
+                <br>
+                <br>
+                <button type="submit">Connect To Network</button>
+            </form>
+        </details>
+    </article>
+    <article id="apcard">
+        <h3>Access Point</h3>
+        <form id="apcfg" onsubmit="fieldSetSendData(event,'apcfg','/apsetconfig')">
+            <label for="apalways">
+                <input type="checkbox" id="apalways" name="apalways" checked /> Turn on AP always (even when connected
+                to WiFi)
+            </label>
+            <label for="apssid">Access Point SSID</label>
+            <input id="apssid" type="text" name="apssid" value=""
+                placeholder="{UID} will be replaced by UID" />
+            <label for="appass">Access Point Password</label>
+            <input id="ACCESSPOINT_PASS_KEY" type="password" name="ACCESSPOINT_PASS_KEY" value=""
+                placeholder="Password (leave empty for none)" />
+            <input type="checkbox" id="appass-toggle" name="appass-toggle" onclick="fieldSetTogglePassword('appass')" />
+            Show Password
+            <br>
+            <button type="submit">Save Access Point Preferences</button>
+            <div id="apupdate">
+
+            </div>
+        </form>
+    </article>
+    <article id="otacard">
         <h3>Over-The-Air Firmware</h3>
         <form id="otacfg" onsubmit="fieldSetSendData(event,'otacfg','/updateotaconfig')">
             <label for="otaurl">URL for update JSON</label>
             <input id="otaurl" type="text" name="otaurl" value=""
                 placeholder="https://github.com/update/eg.json" />
-            <label for="otaurl">Update frequency check (minutes)</label>
-            <input id="otaurl" type="number" name="otaurl" value=""
+            <label for="{{OTA_UPDATE_FREQUENCY_KEYY}}">Update frequency check (minutes)</label>
+            <input id="otafreq" type="number" name="otafreq" value=""
                 placeholder="How many minutes in between update checks" min="1" max="10000" />
-            <button type="submit">Save Auto OTA Config</button>
+            <button type="submit">Save OTA Preferences</button>
             <div id="otaupdate">
 
             </div>
@@ -878,14 +1015,11 @@
         <hr>
         <details>
             <summary>Other update options</summary>
-            <form id="otaimmediate" onsubmit="fieldSetSendData(event,'otacfg','/updateotaconfig')">
+            <form id="otaimmediate" onsubmit="fieldSetSendData(event,'otaimmediate','/binurlotanow')">
                 <label for="otaurl">Immediate update from URL</label>
                 <input id="otaurl" type="text" name="otaurl" value=""
                     placeholder="https://github.com/eg.bin" />
-                <button type="submit" class="btn-subtle">Update from bin URL</button>
-                <div id="otaupdate">
-
-                </div>
+                <button type="submit" class="btn-subtle">Update firmware from URL</button>
             </form>
             <hr>
             <form method='POST' action='/updateota' enctype='multipart/form-data'><input
@@ -895,66 +1029,14 @@
         </details>
 
     </article>
-    <article id="ap">
-        <h3>Access Point</h3>
-        <form id="apcfg" onsubmit="fieldSetSendData(event,'apcfg','/apsetconfig')">
-            <label for="apalways">
-                <input type="checkbox" id="apalways" name="apalways" checked /> Turn on AP always (even when connected
-                to WiFi)
-            </label>
-            <label for="apssid">Access Point SSID</label>
-            <input id="apssid" type="text" name="apssid" value=""
-                placeholder="SSID" />
-            <label for="appass">Access Point Password</label>
-            <input id="ACCESSPOINT_PASS_KEY" type="password" name="ACCESSPOINT_PASS_KEY" value=""
-                placeholder="Password (leave empty for none)" />
-            <input type="checkbox" id="appass-toggle" name="appass-toggle" onclick="fieldSetTogglePassword('appass')" />
-            Show Password
-            <br>
-            <button type="submit">Save Access Point Config</button>
-            <div id="apupdate">
-
-            </div>
-        </form>
-    </article>
-    <article id="station">
-        <h3>Station</h3>
-        <table>
-            <thead>
-                <tr>
-                    <th>SSID</th>
-                    <th>RSSI</th>
-                    <th>Security</th>
-                </tr>
-            </thead>
-            <tbody id="stationnetworks-table">
-                <tr>
-                    <td colspan='3' class='hint'>No Networks to Show</td>
-                </tr>
-            </tbody>
-            <tr>
-                <td colspan='3'><button class="btn-subtle" onclick="StartWiFiScan();" id="stationscan-btn">Scan for WiFi
-                        Networks</button></td>
-            </tr>
-        </table>
-        <form id="stationcfg" onsubmit="fieldSetSendData(event,'stationcfg','/stationcfg')">
-            <label for="stassid">Station SSID</label>
-            <input id="stassid" type="text" name="stassid" value="" placeholder="SSID" />
-            <label for="stapass">Station Password</label>
-            <input id="stapass" type="password" name="stapass" value=""
-                placeholder="Password" />
-            <input type="checkbox" id="stationpass-toggle" onclick="fieldSetTogglePassword('stapass')">
-            Show Password
-            </input>
-            <br>
-            <br>
-            <button type="submit">Connect To Network</button>
-        </form>
-        <div id="stationupdate">
+    <details id="metaconfigcard">
+        <summary>Configuration Files</summary>
+        <button onclick="getCurrentJson('currentJsonText')"> Get Current JSON</button>
+        <div id="currentJsonText">
 
         </div>
-    </article>
-    <details id="system">
+    </details>
+    <details id="systemcard">
         <summary>System</summary>
         <div class="btn-group">
             <button class="btn-subtle btn-narrow" onclick="confirmDialogHelper('Are you sure you want to factory reset?', 
@@ -964,21 +1046,12 @@
             'I know what I am doing',
             'Factory Reset', '/factoryreset')">Factory Reset</button>
 
-
-        </div>
-
     </details>
-    <details id="metaconfig">
-        <summary>Configuration JSON</summary>
-        <button onclick="getCurrentJson('currentJsonText')"> Get Current JSON</button>
-        <div id="currentJsonText">
 
-        </div>
-    </details>
     <footer>
         Built for: nb-iot-nodemcu-32s-4mb <br>
-        Version: v1.0.14 Date: 2024-08-15 Time: 22:24:18 Git: main_58d2d84 <br>
-        Bin File Name: nb-iot-nodemcu-32s-4mb-v1.0.14-20240815-222418-main-58d2d84.bin
+        Version: v1.0.15 Date: 2024-08-16 Time: 16:36:01 Git: main_d288c88 <br>
+        Bin File Name: nb-iot-nodemcu-32s-4mb-v1.0.15-20240816-163601-main-d288c88.bin
     </footer>
     <script>
         // Dialog confirm
@@ -1014,7 +1087,7 @@
         var updatedialogmsg = document.getElementById('updatedialogmsg');
 
         function updateDialogHelper(updatemsg = "Update received") {
-            if(confirmdialog.open){
+            if (confirmdialog.open) {
                 confirmdialog.close()
             }
             updatedialogmsg.innerHTML = updatemsg;
@@ -1038,10 +1111,10 @@
             event.preventDefault();
             var target = document.getElementById(id);
             // This bit is probably useless
-            if(target.tagName === "FORM"){
+            if (target.tagName === "FORM") {
                 var sendData = new FormData(target);
                 console.log("Sending form", sendData);
-            }else{
+            } else {
                 sendData = null;
             }
             var req = new XMLHttpRequest();
@@ -1051,9 +1124,17 @@
                     try {
                         var jsonResponse = JSON.parse(this.responseText);
                         console.log("Form JSON returned: ", jsonResponse);
-                        fieldSetUpdate(jsonResponse);
+                        if (jsonResponse.timeout) {
+                            console.log("Setting fieldSetUpdate with timeout: ", jsonResponse.timeout)
+                            setTimeout(function () {
+                                fieldSetUpdate(jsonResponse);
+                            }, jsonResponse.timeout);
+                        } else {
+                            console.log("No timeout in respinse so calling fieldSetUpdate")
+                            fieldSetUpdate(jsonResponse);
+                        }
                     } catch (error) {
-                        console.error("Form Submit Error: ", error)
+                        console.error("Form Submit Error: ", error, this.responseText);
                     }
 
                 }
@@ -1077,7 +1158,7 @@
         }
 
         function fieldSetUpdate(jsonResponse) {
-
+            console.log("Field Set Update currently parsing: ", jsonResponse);
             if (jsonResponse.updatemsg) {
                 if (jsonResponse.updateid && jsonResponse.updatemsg) {
                     document.getElementById(jsonResponse.updateid).innerHTML = jsonResponse.updatemsg;
@@ -1096,10 +1177,12 @@
                         console.log("Form update JSON parse: ", jsonResponse);
 
                         if (jsonResponse.timeout) {
+                            console.log("Setting fieldSetUpdate with timeout: ", jsonResponse.timeout)
                             setTimeout(function () {
                                 fieldSetUpdate(jsonResponse);
                             }, jsonResponse.timeout);
                         } else {
+                            console.log("No timeout in respinse so calling fieldSetUpdate")
                             fieldSetUpdate(jsonResponse);
                         }
                     }
@@ -1182,6 +1265,66 @@
             }
         });
 
+        // STATUS FUNCTIONS
+        var statusUpdateTimer = 0;
+        var statusTimeMessage = document.getElementById("statusupdatetimer");
+        var statusUpdateTimerCalled = false;
+        function updateStatusTimer() {
+            statusTimeMessage.innerHTML = "Last updated " + statusUpdateTimer + " seconds ago";
+            statusUpdateTimer++;
+            setTimeout(updateStatusTimer, 1000);
+        }
+
+        function updateStatus() {
+            var req = new XMLHttpRequest();
+            req.open('GET', "/getstatus", true);
+            req.onload = function () {
+                if (this.readyState == 4 && this.status == 200) {
+                    var jsonResponse = JSON.parse(this.responseText);
+                    console.log("Status JSON returned: ", jsonResponse);
+                    replaceWithJSONValues(jsonResponse);
+                    statusUpdateTimer = 0;
+
+                    if (!statusUpdateTimerCalled) {
+                        statusUpdateTimerCalled = true;
+                        updateStatusTimer();
+                    }
+                }
+                else {
+                    console.error("Error on Status Update");
+                }
+            };
+            req.onerror = function () {
+                console.error("Error on Status Update");
+            };
+            req.send(null);
+            statusUpdateTimer = setTimeout(updateStatus, 10000);
+        }
+
+        // Replace all components using a JSON object
+        function replaceWithJSONValues(jsonReplacements) {
+            for (var key in jsonReplacements) {
+                if (jsonReplacements.hasOwnProperty(key)) {
+                    let elements = document.querySelectorAll("#" + key);
+                    elements.forEach(element => {
+                        if (element.tagName === "INPUT") {
+                            if (element.getAttribute("type") === "checkbox") {
+                                console.log("Setting checked [", key, "] to: ", jsonReplacements[key]);
+                                element.checked = jsonReplacements[key];
+                            } else {
+                                console.log("Setting value for [", key, "] to: ", jsonReplacements[key]);
+                                element.value = jsonReplacements[key];
+                            }
+                        }
+                        else {
+                            console.log("Setting innerHTML [", key, "] to: ", jsonReplacements[key]);
+                            element.innerHTML = jsonReplacements[key];
+                        }
+                    });
+                }
+            }
+        }
+
         // Config JSON value writing
         function getAndSetJsonConfig() {
             var req = new XMLHttpRequest();
@@ -1196,26 +1339,7 @@
                     }
 
                     console.log("Config JSON returned: ", jsonResponse);
-                    for (var key in jsonResponse) {
-                        if (jsonResponse.hasOwnProperty(key)) {
-                            var element = document.getElementById(key);
-                            if (element) {
-                                if (element.tagName === "INPUT") {
-                                    if (element.getAttribute("type") === "checkbox") {
-                                        console.log("Setting checked [", key, "] to: ", jsonResponse[key]);
-                                        element.checked = jsonResponse[key];
-                                    } else {
-                                        console.log("Setting value for [", key, "] to: ", jsonResponse[key]);
-                                        element.value = jsonResponse[key];
-                                    }
-                                }
-                                else {
-                                    console.log("Setting innerHTML [", key, "] to: ", jsonResponse[key]);
-                                    element.innerHTML = jsonResponse[key];
-                                }
-                            }
-                        }
-                    }
+                    replaceWithJSONValues(jsonResponse);
                 }
                 else {
                     console.error("assignValuesFromJson", "Error getting json config");

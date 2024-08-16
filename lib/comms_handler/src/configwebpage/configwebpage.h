@@ -27,8 +27,9 @@ public:
     void handleDeviceRestart(AsyncWebServerRequest *request);
 
     void handleUpdateOTAConfig(AsyncWebServerRequest *request);
+    void handleUpdateOTAStatus(AsyncWebServerRequest *request);
     void handleUpdateOTAInternet(AsyncWebServerRequest *request);
-    void handleUpdateOTAUpload(AsyncWebServerRequest *request);
+    void handleUpdateOTAFileUpload(AsyncWebServerRequest *request);
     void handleUpdateOTANowRequest(AsyncWebServerRequest *request);
 
     void handleStationStartScan(AsyncWebServerRequest *request);

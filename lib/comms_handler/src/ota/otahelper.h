@@ -6,16 +6,22 @@
 #include <Arduino.h>
 #include <freertos/FreeRTOS.h>
 
-class OTAHelper {
+class OTAHelper
+{
 public:
     OTAHelper(ConfigHelper *config_helper = nullptr);
+    bool OTARunning();
+    String GetOTAUpdateStatus();
     void CallOTAInternetUpdateAsync(String url);
     static void UpdateOTAInternetURL(void *pvParameters);
-    void UpdateOTAUpload();
+    void UpdateOTAFileUpload();
     String _update_url;
+    bool _update_success = false;
+
 private:
-    ConfigHelper *_config_helper;
     
+    String _error_msg;
+    ConfigHelper *_config_helper;
 };
 
 #endif // OTA_HELPER_H

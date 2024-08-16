@@ -96,9 +96,11 @@ ConfigWebpage::ConfigWebpage(ConfigHelper *config_helper, OTAHelper *ota_helper)
                 { this->handleDeviceRestart(request); });
 
     // DEBUG OTA CALLBACK
-    // TODO: FIX THIS CALLBACK
-    _server->on(UPDATE_OTA_CONFIG_ENDPOINT, [this](AsyncWebServerRequest *request)
+    _server->on(UPDATE_OTA_BIN_URL_ENDPOINT, [this](AsyncWebServerRequest *request)
                 { this->handleUpdateOTANowRequest(request); });
+
+    _server->on(UPDATE_OTA_STATUS_ENDPOINT, [this](AsyncWebServerRequest *request)
+                { this->handleUpdateOTAStatus(request); });
 
     // Begin the server
     _server->begin();
@@ -152,7 +154,8 @@ void ConfigWebpage::handleFactoryReset(AsyncWebServerRequest *request)
     ESP_LOGI(TAG, "Factory reset done from webpage");
 }
 
-void ConfigWebpage::handleDeviceRestart(AsyncWebServerRequest *request){
+void ConfigWebpage::handleDeviceRestart(AsyncWebServerRequest *request)
+{
     ESP_LOGI("ConfigHandler", "Restart requested from webpage");
     JsonDocument responsedoc;
     responsedoc["updatemsg"] = "<p class='update'> Restarting </p>";
@@ -288,7 +291,8 @@ void ConfigWebpage::handleStationSendUpdate(AsyncWebServerRequest *request)
         {
             ESP_LOGI(TAG, "Failed to connect to WiFi, retrying");
             responsedoc["endpoint"] = STA_SEND_UPDATE_ENDPOINT;
-            responsedoc["updatemsg"] = "<p class='update'> Attempting to connect ... </p>";
+            String updatemsg = "<p class='update'> Connecting.. attempt [" + String(_sta_attempts) + "/5] </p>";
+            responsedoc["updatemsg"] = updatemsg;
             responsedoc["timeout"] = "1000";
         }
     }
@@ -322,6 +326,13 @@ void ConfigWebpage::handleAccessPointSetConfig(AsyncWebServerRequest *request)
         if (strcmp(p->name().c_str(), ACCESSPOINT_SSID_KEY) == 0)
         {
             apssid = p->value();
+
+            // Add UID if pattern match
+            if (apssid != "" && apssid.length() < 32)
+            {
+                // TODO: case insensitve replacement
+                apssid.replace(UID_REPLACEMENT_PATTERN, _config_helper->getDeviceMACString());
+            }
         }
         else if (strcmp(p->name().c_str(), ACCESSPOINT_PASS_KEY) == 0)
         {
@@ -370,7 +381,7 @@ void ConfigWebpage::handleAccessPointSetConfig(AsyncWebServerRequest *request)
     }
     else
     {
-        String updatemsg = "<p class='updategood'> Credentials with SSID: "+ apssid +" have been saved!</p>";
+        String updatemsg = "<p class='updategood'> Credentials with SSID: " + apssid + " have been saved!</p>";
         responsedoc["updatemsg"] = updatemsg;
         // Save to flash here
         _config_helper->setConfigOption("apssid", apssid.c_str());
@@ -388,6 +399,31 @@ void ConfigWebpage::handleAccessPointSetConfig(AsyncWebServerRequest *request)
 /* -------------------------------------------------------------------------- */
 /*                                OTA FUNCTIONS                               */
 /* -------------------------------------------------------------------------- */
+
+void ConfigWebpage::handleUpdateOTAStatus(AsyncWebServerRequest *request)
+{
+    JsonDocument responsedoc;
+    String updateStatus = _ota_helper->GetOTAUpdateStatus();
+
+    ESP_LOGI("OTAUpdate", "Status message: [%s]", updateStatus.c_str());
+
+    responsedoc["updatemsg"] = updateStatus.c_str();
+    if(_ota_helper->OTARunning()){
+        responsedoc["endpoint"] = UPDATE_OTA_STATUS_ENDPOINT;
+        responsedoc["timeout"] = "2000";
+    }
+    
+    String jsonString;
+    serializeJson(responsedoc, jsonString);
+    
+    AsyncResponseStream *response = request->beginResponseStream("application/json");
+    response->print(jsonString.c_str());
+    request->send(response);
+}
+
+void ConfigWebpage::handleUpdateOTAFileUpload(AsyncWebServerRequest *request)
+{
+}
 
 void ConfigWebpage::handleUpdateOTANowRequest(AsyncWebServerRequest *request)
 {
@@ -407,7 +443,9 @@ void ConfigWebpage::handleUpdateOTANowRequest(AsyncWebServerRequest *request)
     JsonDocument responsedoc;
     if (updateURL != "")
     {
-        responsedoc["updatemsg"] = "<p class='updategood'> Checking URL for update </p>";
+        responsedoc["updatemsg"] = "<p class='update'> Checking URL for update </p>";
+        responsedoc["endpoint"] = UPDATE_OTA_STATUS_ENDPOINT;
+        responsedoc["timeout"] = "5000";
     }
     else
     {
@@ -415,6 +453,8 @@ void ConfigWebpage::handleUpdateOTANowRequest(AsyncWebServerRequest *request)
     }
 
     String jsonString;
+    serializeJson(responsedoc, jsonString);
+
     AsyncResponseStream *response = request->beginResponseStream("application/json");
     response->print(jsonString.c_str());
     request->send(response);

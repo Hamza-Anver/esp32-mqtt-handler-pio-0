@@ -41,7 +41,9 @@ void ConfigHelper::restoreDefaultConfigJSON(bool write_to_nvs)
 
     _config_json[DEVICE_NAME_KEY] = "SLT DL Debug NB IoT";
 
-    _config_json[ACCESSPOINT_SSID_KEY] = "ESP_32_AP_mac";
+    // Factory SSID is NB_IoT_<MAC>
+    String apssid_temp = "NB_IoT_" + _config_json[DEVICE_UID_KEY].as<String>();
+    _config_json[ACCESSPOINT_SSID_KEY] = apssid_temp;
     _config_json[ACCESSPOINT_PASS_KEY] = "";
     _config_json[STATION_SSID_KEY] = "Hamza Pixel 6a";
     _config_json[STATION_PASS_KEY] = "ham54321";

@@ -13,11 +13,17 @@
 #define RESTART_DEVICE_ENDPOINT "/restartdevice"
 
 #define UPDATE_FILE_UPLOAD_ENDPOINT "/updateota"
+#define UPDATE_OTA_BIN_URL_ENDPOINT "/binurlotanow"
 
 #define UPDATE_OTA_CONFIG_ENDPOINT "/updateotaconfig"
 
+#define UPDATE_OTA_STATUS_ENDPOINT "/getotastatus"
+
 #define CONFIG_JSON_GET_ENDPOINT "/cfggetjson"
 #define CONFIG_JSON_SET_ENDPOINT "/configsetjson"
+
+#define DEVICE_GET_STATUS_ENDPOINT "/getstatus"
+#define DEVICE_SET_SETTINGS_ENDPOINT "/devicecfg"
 
 
 #endif // ENDPOINTS_H
