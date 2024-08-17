@@ -1018,6 +1018,9 @@
             <label for="{{MQTT_LWT_QOS_KEY}}">Last Will QOS</label>
             <input id="{{MQTT_LWT_QOS_KEY}}" type="number" name="{{MQTT_LWT_QOS_KEY}}" value="" min="0" max="2"
                 placeholder="0, 1, 2" />
+            <label for="{{MQTT_QUEUE_SIZE_KEY}}">Message Queue Size</label>
+            <input id="{{MQTT_QUEUE_SIZE_KEY}}" type="number" name="{{MQTT_QUEUE_SIZE_KEY}}" value="" min="0" max="1000"
+                placeholder="Queue Size" />
 
             <button type="submit">Save MQTT Preferences</button>
     </article>
@@ -1035,6 +1038,10 @@
                 <option value="{{NET_WIFI_THEN_LTE_PREF_OPTION}}">Prioritize WiFi (uses both)</option>
                 <option value="{{NET_LTE_THEN_WIFI_PREF_OPTION}}">Prioritize LTE (uses both)</option>
             </select>
+            <label for="{{NET_PRIORITY_SWITCH_TIME_KEY}}">Changing Frequency</label>
+            <dt>How often to check to switch method (only effects if LTE & WiFi are used)</dt>
+            <input id="{{NET_PRIORITY_SWITCH_TIME_KEY}}" type="number" name="{{NET_PRIORITY_SWITCH_TIME_KEY}}" value=""
+                placeholder="minutes in between checks" min="1" max="10000" />
             <button type="submit">Save Networking Preferences</button>
         </form>
         <hr>

@@ -20,7 +20,6 @@ class ConfigHelper {
         String getConfigJSONString();
 
         //TODO: handle a string of JSON (bulk assignment)
-        //TODO: return a string of JSON
 
         // GETTERS
         // Value is needed to help with type

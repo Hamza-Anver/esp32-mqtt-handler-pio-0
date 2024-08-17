@@ -48,6 +48,7 @@ void ConfigHelper::restoreDefaultConfigJSON(bool write_to_nvs)
 
     // Internet Access
     _config_json[NET_PRIORITY_PREF_KEY] = NET_WIFI_THEN_LTE_PREF_OPTION;
+    _config_json[NET_PRIORITY_SWITCH_TIME_KEY] = 2;
 
     _config_json[STATION_SSID_KEY] = "Hamza Pixel 6a";
     _config_json[STATION_PASS_KEY] = "ham54321";
@@ -69,6 +70,7 @@ void ConfigHelper::restoreDefaultConfigJSON(bool write_to_nvs)
     _config_json[MQTT_LWT_TOPIC_KEY] = _config_json[DEVICE_UID_KEY].as<String>() + "/lwt";
     _config_json[MQTT_LWT_PAYLOAD_KEY] = "offline";
     _config_json[MQTT_LWT_QOS_KEY] = 0;
+    _config_json[MQTT_QUEUE_SIZE_KEY] = 30;
 
 
     if (write_to_nvs)

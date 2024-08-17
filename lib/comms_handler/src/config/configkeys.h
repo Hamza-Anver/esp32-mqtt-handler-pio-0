@@ -11,7 +11,8 @@
 
 #define UID_REPLACEMENT_PATTERN "{UID}"
 
-#define NET_PRIORITY_PREF_KEY "prefconnect"
+#define NET_PRIORITY_PREF_KEY "netpref"
+#define NET_PRIORITY_SWITCH_TIME_KEY "netinterval"
 
 #define NET_WIFI_ONLY_PREF_OPTION "wifionly"
 #define NET_LTE_ONLY_PREF_OPTION "lteonly"
@@ -42,6 +43,7 @@
 #define MQTT_LWT_TOPIC_KEY "lwttopic"
 #define MQTT_LWT_PAYLOAD_KEY "lwtpayload"
 #define MQTT_LWT_QOS_KEY "lwtqos"
+#define MQTT_QUEUE_SIZE_KEY "mqttqsize"
 
 
 

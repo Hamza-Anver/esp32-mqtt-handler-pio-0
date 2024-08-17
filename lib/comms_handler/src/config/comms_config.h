@@ -1,26 +1,13 @@
-#define DEBUG_SERIAL true
-#define DEBUG_TIMEOUT 5000
 
-// Device configuration
-#define UUID 100
 
 #define LTE_PIN_TX 17
 #define LTE_PIN_RX 16
 #define LTE_PWR_PIN 12
 #define LTE_RST_PIN 4
 
-// MQTT configuration
-#define MQTT_CLIENT_ID "default_client_test"
-#define MQTT_PORT 1883
-#define MQTT_KEEPALIVE 15
-#define MQTT_CLEAN_SESSION true
-#define MQTT_USE_SSL false
-#define MQTT_RETAIN false
 
-#define MQTT_SERVER "test.mosquitto.org"
-#define MQTT_LWT_TOPIC "dying-nodes"
-#define MQTT_LWT_MESSAGE "ded"
-#define MQTT_LWT_QOS 2
+
+
 
 // LTE configuration
 #define LTE_APN "mobitel"
@@ -29,38 +16,10 @@
 #define LTE_COMP_TIMEOUT 5000
 #define LTE_PUBLISH_TIMEOUT_S 30
 
-// default AP settings
-#define WIFI_SSID_AP "config_1337_100"
-#define WIFI_PASS_AP ""
-
-// Debug STA settings
-#define WIFI_SSID_DEF "Hamza Pixel 6a"
-#define WIFI_PASS_DEF "ham54321"
-
-
-// Prioritize using WiFi if possible, show AP and creds page if no WiFi
-// Attempt reconnecting to WiFi every x seconds
-#define WIFI_USE_AP true
-#define WIFI_PRIORITIZED true
-
-// Interval in ms to check again to switch back to primary comms method
-#define PRIMARY_CHECK_TIME_MS 30000
-
-/* -------------------------------------------------------------------------- */
-/*                             CONFIG PAGE OPTIONS                            */
-/* -------------------------------------------------------------------------- */
-#define INI_FILE "/config.ini"
-#define FACTORY_OPEN_CONFIG_AP_ALWAYS true
-
 /* -------------------------------------------------------------------------- */
 /*                  MODIFIABLE JSON CONFIGURATION VIA WEBPAGE                 */
 /* -------------------------------------------------------------------------- */
 #ifndef CONFIG_OPTIONS_H
 #define CONFIG_OPTIONS_H
-
-#include <Arduino.h>
-#include <ArduinoJson.h>
-
-void setDefaultJsonConfig(JsonDocument *config);
 
 #endif // CONFIG_OPTIONS_H

@@ -1028,13 +1028,17 @@
         </dt>
         <form id="internetprefform"
             onsubmit="fieldSetSendData(event,'internetprefform', '/netpref')">
-            <label for="prefconnect">Networking Mode:</label>
-            <select id="prefconnect" name="prefconnect">
+            <label for="netpref">Networking Mode:</label>
+            <select id="netpref" name="netpref">
                 <option selected value="wifionly">Use WiFi only</option>
                 <option value="lteonly">Use LTE only</option>
                 <option value="ltethenwifi">Prioritize WiFi (uses both)</option>
                 <option value="wifithenlte">Prioritize LTE (uses both)</option>
             </select>
+            <label for="netinterval">Changing Frequency</label>
+            <dt>How often to check to switch method (only effects if LTE & WiFi are used)</dt>
+            <input id="netinterval" type="number" name="netinterval" value=""
+                placeholder="minutes in between checks" min="1" max="10000" />
             <button type="submit">Save Networking Preferences</button>
         </form>
         <hr>
@@ -1141,8 +1145,8 @@
 
     <footer>
         Built for: nb-iot-nodemcu-32s-4mb <br>
-        Version: v1.0.18 Date: 2024-08-17 Time: 22:46:21 Git: main_0f54ee2 <br>
-        Bin File Name: nb-iot-nodemcu-32s-4mb-v1.0.18-20240817-224621-main-0f54ee2.bin
+        Version: v1.0.19 Date: 2024-08-18 Time: 00:16:05 Git: main_b19a11b <br>
+        Bin File Name: nb-iot-nodemcu-32s-4mb-v1.0.19-20240818-001605-main-b19a11b.bin
     </footer>
     <script>
         // Dialog confirm
