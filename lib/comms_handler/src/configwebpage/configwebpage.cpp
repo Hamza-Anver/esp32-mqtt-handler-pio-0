@@ -148,41 +148,44 @@ void ConfigWebpage::handleReceiveConfigJSON(AsyncWebServerRequest *request)
 void ConfigWebpage::handleSendStatusJSON(AsyncWebServerRequest *request)
 {
     JsonDocument responsedoc;
-    
+
     // WiFi status
     String message;
     String css_class;
-    switch(WiFi.status()){
-        case WL_CONNECTED:
-            message = "Connected: " + WiFi.SSID();
-            css_class = "infogood";
-            break;
-        case WL_NO_SSID_AVAIL:
-            message = "No SSID Available";
-            css_class = "infobad";
-            break;
-        case WL_CONNECT_FAILED:
-            message = "Connection Failed";
-            css_class = "infobad";
-            break;
-        case WL_IDLE_STATUS:
-            message = "Idle";
-            css_class = "infomeh";
-            break;
-        case WL_DISCONNECTED:
-            message = "Disconnected";
-            css_class = "infobad";
-            break;
-        default:
-            message = "Unknown";
-            css_class = "infobad";
-            break;
+    switch (WiFi.status())
+    {
+    case WL_CONNECTED:
+        message = "Connected: " + String(WiFi.SSID());
+        css_class = "infogood";
+        break;
+    case WL_NO_SSID_AVAIL:
+        message = "No SSID Available";
+        css_class = "infobad";
+        break;
+    case WL_CONNECT_FAILED:
+        message = "Connection Failed";
+        css_class = "infobad";
+        break;
+    case WL_IDLE_STATUS:
+        message = "Idle";
+        css_class = "infomeh";
+        break;
+    case WL_DISCONNECTED:
+        message = "Disconnected";
+        css_class = "infobad";
+        break;
+    default:
+        message = "Unknown";
+        css_class = "infobad";
+        break;
     }
 
-    responsedoc[WIFI_STATUS_MSG_ID] = message;
+    responsedoc[WIFI_STATUS_MSG_ID]["msg"] = message;
+    responsedoc[WIFI_STATUS_MSG_ID]["class"] = css_class;
 
     // IP Address
-    responsedoc[DEVICE_IP_MSG_ID] = WiFi.localIP().toString().c_str();
+    message = String(WiFi.localIP().toString());
+    responsedoc[DEVICE_IP_MSG_ID] = message;
 
     // Uptime
     message = String(esp_timer_get_time() / 1000000) + " seconds";
@@ -194,14 +197,15 @@ void ConfigWebpage::handleSendStatusJSON(AsyncWebServerRequest *request)
     // Max alloc heap
     responsedoc[DEVICE_MAX_ALLOC_HEAP_MSG_ID] = ESP.getMaxAllocHeap();
 
-
-
     String jsonString;
-    serializeJson(responsedoc, jsonString);
+    serializeJsonPretty(responsedoc, jsonString);
 
     AsyncResponseStream *response = request->beginResponseStream("application/json");
     response->print(jsonString.c_str());
-    request->send(response);}
+    request->send(response);
+
+    ESP_LOGI(TAG, "Sending status JSON [%s]", jsonString.c_str());
+}
 
 /* ---------------------------- SETTINGS FUNCTION --------------------------- */
 
