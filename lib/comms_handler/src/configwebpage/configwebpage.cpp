@@ -88,6 +88,10 @@ ConfigWebpage::ConfigWebpage(ConfigHelper *config_helper, OTAHelper *ota_helper)
     _server->on(CONFIG_JSON_GET_ENDPOINT, HTTP_GET, [this](AsyncWebServerRequest *request)
                 { this->handleSendCurrentConfigJSON(request); });
 
+    // System Status
+    _server->on(DEVICE_GET_STATUS_ENDPOINT, [this](AsyncWebServerRequest *request)
+                { this->handleSendStatusJSON(request); });
+
     // System callbacks
     _server->on(FACTORY_RESET_ENDPOINT, [this](AsyncWebServerRequest *request)
                 { this->handleFactoryReset(request); });
@@ -136,6 +140,68 @@ void ConfigWebpage::handleSendCurrentConfigJSON(AsyncWebServerRequest *request)
     response->print(jsonString.c_str());
     request->send(response);
 }
+
+void ConfigWebpage::handleReceiveConfigJSON(AsyncWebServerRequest *request)
+{
+}
+
+void ConfigWebpage::handleSendStatusJSON(AsyncWebServerRequest *request)
+{
+    JsonDocument responsedoc;
+    
+    // WiFi status
+    String message;
+    String css_class;
+    switch(WiFi.status()){
+        case WL_CONNECTED:
+            message = "Connected: " + WiFi.SSID();
+            css_class = "infogood";
+            break;
+        case WL_NO_SSID_AVAIL:
+            message = "No SSID Available";
+            css_class = "infobad";
+            break;
+        case WL_CONNECT_FAILED:
+            message = "Connection Failed";
+            css_class = "infobad";
+            break;
+        case WL_IDLE_STATUS:
+            message = "Idle";
+            css_class = "infomeh";
+            break;
+        case WL_DISCONNECTED:
+            message = "Disconnected";
+            css_class = "infobad";
+            break;
+        default:
+            message = "Unknown";
+            css_class = "infobad";
+            break;
+    }
+
+    responsedoc[WIFI_STATUS_MSG_ID] = message;
+
+    // IP Address
+    responsedoc[DEVICE_IP_MSG_ID] = WiFi.localIP().toString().c_str();
+
+    // Uptime
+    message = String(esp_timer_get_time() / 1000000) + " seconds";
+    responsedoc[DEVICE_UPTIME_MSG_ID] = message;
+
+    // Device heap
+    responsedoc[DEVICE_FREE_HEAP_MSG_ID] = ESP.getFreeHeap();
+
+    // Max alloc heap
+    responsedoc[DEVICE_MAX_ALLOC_HEAP_MSG_ID] = ESP.getMaxAllocHeap();
+
+
+
+    String jsonString;
+    serializeJson(responsedoc, jsonString);
+
+    AsyncResponseStream *response = request->beginResponseStream("application/json");
+    response->print(jsonString.c_str());
+    request->send(response);}
 
 /* ---------------------------- SETTINGS FUNCTION --------------------------- */
 
@@ -408,14 +474,15 @@ void ConfigWebpage::handleUpdateOTAStatus(AsyncWebServerRequest *request)
     ESP_LOGI("OTAUpdate", "Status message: [%s]", updateStatus.c_str());
 
     responsedoc["updatemsg"] = updateStatus.c_str();
-    if(_ota_helper->OTARunning()){
+    if (_ota_helper->OTARunning())
+    {
         responsedoc["endpoint"] = UPDATE_OTA_STATUS_ENDPOINT;
         responsedoc["timeout"] = "2000";
     }
-    
+
     String jsonString;
     serializeJson(responsedoc, jsonString);
-    
+
     AsyncResponseStream *response = request->beginResponseStream("application/json");
     response->print(jsonString.c_str());
     request->send(response);

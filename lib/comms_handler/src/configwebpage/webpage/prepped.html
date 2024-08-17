@@ -847,7 +847,7 @@
         </nav>
         <br>
         <br>
-        <h2>OTA CATBOX VERSION</h2>
+        <h2>Default Title Here</h2>
         <dt>SERIES</div>
         </dt>
     </header>
@@ -894,13 +894,30 @@
                     <td class="infomeh" id="deviceid">Loading...</td>
                 </tr>
                 <tr>
-                    <td>WiFi</td>
-                    <td class="infobad" id="deviceid">Disconnected</td>
+                    <td>Series</td>
+                    <td class="infomeh" id="deviceseries">Loading...</td>
                 </tr>
                 <tr>
-                    <td>LTE</td>
-                    <td class="infogood" id="deviceid">Disconnected</td>
+                    <td>WiFi</td>
+                    <td class="infomeh" id="wifistatus">Loading ...</td>
                 </tr>
+                <tr>
+                    <td>IP Address</td>
+                    <td class="infomeh" id="deviceip">Loading ...</td>
+                </tr>
+                <tr>
+                    <td>Uptime</td>
+                    <td class="infomeh" id="deviceuptime">Loading ...</td>
+                </tr>
+                <tr>
+                    <td>Free Heap</td>
+                    <td class="infomeh" id="deviceheap">Loading ...</td>
+                </tr>
+                <tr>
+                    <td>Max Alloc Heap</td>
+                    <td class="infomeh" id="devicemaxheap">Loading ...</td>
+                </tr>
+                
             </tbody>
         </table>
         <div class="hint" id="statusupdatetimer">Not updated yet...</div>
@@ -1050,8 +1067,8 @@
 
     <footer>
         Built for: nb-iot-nodemcu-32s-4mb <br>
-        Version: v1.0.15 Date: 2024-08-16 Time: 16:36:01 Git: main_d288c88 <br>
-        Bin File Name: nb-iot-nodemcu-32s-4mb-v1.0.15-20240816-163601-main-d288c88.bin
+        Version: v1.0.16 Date: 2024-08-17 Time: 14:04:36 Git: main_1ffacfa <br>
+        Bin File Name: nb-iot-nodemcu-32s-4mb-v1.0.16-20240817-140436-main-1ffacfa.bin
     </footer>
     <script>
         // Dialog confirm
@@ -1289,6 +1306,7 @@
                         statusUpdateTimerCalled = true;
                         updateStatusTimer();
                     }
+                    setTimeout(updateStatus, 5000)
                 }
                 else {
                     console.error("Error on Status Update");
@@ -1298,8 +1316,9 @@
                 console.error("Error on Status Update");
             };
             req.send(null);
-            statusUpdateTimer = setTimeout(updateStatus, 10000);
         }
+
+        updateStatus();
 
         // Replace all components using a JSON object
         function replaceWithJSONValues(jsonReplacements) {
@@ -1317,8 +1336,16 @@
                             }
                         }
                         else {
-                            console.log("Setting innerHTML [", key, "] to: ", jsonReplacements[key]);
-                            element.innerHTML = jsonReplacements[key];
+                            // Handle class assignment too
+                            if (jsonReplacements[key]["class"]) {
+                                element.className = jsonReplacements[key]["class"];
+                                if (jsonReplacements[key]["msg"]) {
+                                    element.innerHTML = jsonReplacements[key]["msg"];
+                                }
+                            } else {
+                                console.log("Setting innerHTML [", key, "] to: ", jsonReplacements[key]);
+                                element.innerHTML = jsonReplacements[key];
+                            }
                         }
                     });
                 }

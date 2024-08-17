@@ -22,6 +22,7 @@ public:
 
     void handleSendCurrentConfigJSON(AsyncWebServerRequest *request);
     void handleReceiveConfigJSON(AsyncWebServerRequest *request);
+    void handleSendStatusJSON(AsyncWebServerRequest *request);
 
     void handleFactoryReset(AsyncWebServerRequest *request);
     void handleDeviceRestart(AsyncWebServerRequest *request);

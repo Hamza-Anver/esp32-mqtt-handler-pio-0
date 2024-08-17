@@ -894,13 +894,30 @@
                     <td class="infomeh" id="{{DEVICE_UID_KEY}}">Loading...</td>
                 </tr>
                 <tr>
-                    <td>WiFi</td>
-                    <td class="infobad" id="{{DEVICE_UID_KEY}}">Disconnected</td>
+                    <td>Series</td>
+                    <td class="infomeh" id="{{DEVICE_SERIES_MSG_ID}}">Loading...</td>
                 </tr>
                 <tr>
-                    <td>LTE</td>
-                    <td class="infogood" id="{{DEVICE_UID_KEY}}">Disconnected</td>
+                    <td>WiFi</td>
+                    <td class="infomeh" id="{{WIFI_STATUS_MSG_ID}}">Loading ...</td>
                 </tr>
+                <tr>
+                    <td>IP Address</td>
+                    <td class="infomeh" id="{{DEVICE_IP_MSG_ID}}">Loading ...</td>
+                </tr>
+                <tr>
+                    <td>Uptime</td>
+                    <td class="infomeh" id="{{DEVICE_UPTIME_MSG_ID}}">Loading ...</td>
+                </tr>
+                <tr>
+                    <td>Free Heap</td>
+                    <td class="infomeh" id="{{DEVICE_FREE_HEAP_MSG_ID}}">Loading ...</td>
+                </tr>
+                <tr>
+                    <td>Max Alloc Heap</td>
+                    <td class="infomeh" id="{{DEVICE_MAX_ALLOC_HEAP_MSG_ID}}">Loading ...</td>
+                </tr>
+                
             </tbody>
         </table>
         <div class="hint" id="statusupdatetimer">Not updated yet...</div>
@@ -1289,6 +1306,7 @@
                         statusUpdateTimerCalled = true;
                         updateStatusTimer();
                     }
+                    setTimeout(updateStatus, 5000)
                 }
                 else {
                     console.error("Error on Status Update");
@@ -1298,8 +1316,9 @@
                 console.error("Error on Status Update");
             };
             req.send(null);
-            statusUpdateTimer = setTimeout(updateStatus, 10000);
         }
+
+        updateStatus();
 
         // Replace all components using a JSON object
         function replaceWithJSONValues(jsonReplacements) {
@@ -1317,8 +1336,16 @@
                             }
                         }
                         else {
-                            console.log("Setting innerHTML [", key, "] to: ", jsonReplacements[key]);
-                            element.innerHTML = jsonReplacements[key];
+                            // Handle class assignment too
+                            if (jsonReplacements[key]["class"]) {
+                                element.className = jsonReplacements[key]["class"];
+                                if (jsonReplacements[key]["msg"]) {
+                                    element.innerHTML = jsonReplacements[key]["msg"];
+                                }
+                            } else {
+                                console.log("Setting innerHTML [", key, "] to: ", jsonReplacements[key]);
+                                element.innerHTML = jsonReplacements[key];
+                            }
                         }
                     });
                 }

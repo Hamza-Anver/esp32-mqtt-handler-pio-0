@@ -28,7 +28,11 @@
 #define WIFI_STATUS_MSG_ID "wifistatus"
 #define LTE_STATUS_MSG_ID "ltestatus"
 #define DEVICE_UID_MSG_ID "deviceuid"
+#define DEVICE_IP_MSG_ID "deviceip"
 #define DEVICE_UPTIME_MSG_ID "deviceuptime"
+#define DEVICE_FREE_HEAP_MSG_ID "deviceheap"
+#define DEVICE_MAX_ALLOC_HEAP_MSG_ID "devicemaxheap"
+#define DEVICE_SERIES_MSG_ID "deviceseries"
 
 //TODO: add more here later
 
