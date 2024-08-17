@@ -1,6 +1,10 @@
 TODO:
+
 Replace strings with MAC
+
 Enable disable config options depending on usecase
+
+Switch to WiFi Multi
 
 # Planning:
 ## Configuration Options

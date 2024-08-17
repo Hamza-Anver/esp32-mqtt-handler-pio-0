@@ -3,7 +3,7 @@
 
 #define CONFIG_KEYS_HEADER "config/configkeys.h"
 #define ENDPOINTS_HEADER "configwebpage/webpage/endpoints.h"
-#define VERSION_HEADER "include/version.h"
+#define VERSION_HEADER "version.h"
 
 #define CONFIG_WEBPAGE_GZIP_HEADER "configwebpage/webpage/webpage.h"
 

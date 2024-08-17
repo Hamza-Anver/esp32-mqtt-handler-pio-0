@@ -1,13 +1,13 @@
 #include <Arduino.h>
-#include <configwebpage/configwebpage.h>
+#include <comms_handler.h>
 
-ConfigWebpage *configWebpage;
+CommsHandler *comms;
 
 unsigned long previousMillis;
 
 void setup()
 {
-    configWebpage = new ConfigWebpage();
+    comms = new CommsHandler();
 }
 
 void loop()

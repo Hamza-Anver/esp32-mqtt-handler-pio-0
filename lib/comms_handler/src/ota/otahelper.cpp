@@ -6,6 +6,10 @@
 
 static const char *TAG = "OTAHelper";
 
+// TODO: Work with bin uploads
+// TODO: Filesystem updates
+// TODO: JSON checking
+
 OTAHelper::OTAHelper(ConfigHelper *config_helper)
 {
     if (config_helper == nullptr)

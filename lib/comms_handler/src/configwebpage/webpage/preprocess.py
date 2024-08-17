@@ -109,12 +109,16 @@ def preprocess_webpage(env):
             # Find the appropriate header file from value
             lib_path = os.path.join(lib_dir, value)
             src_path = os.path.join(src_dir, value)
+            inc_path = os.path.join(env["PROJECT_INCLUDE_DIR"], value)
             if os.path.exists(lib_path):
                 print(f"Found metaheader [{key}] in directory '{lib_path}'")
                 header_defs.append(extract_definitions(lib_path))
             elif os.path.exists(src_path):
                 print(f"Found metaheader [{key}] in directory '{src_path}'")
                 header_defs.append(extract_definitions(src_path))
+            elif os.path.exists(inc_path):
+                print(f"Found metaheader [{key}] in directory '{inc_path}'")
+                header_defs.append(extract_definitions(inc_path))
             else:
                 print(f"WARNING: Metaheader directory '{lib_path}' and '{src_path}' not found!")
 

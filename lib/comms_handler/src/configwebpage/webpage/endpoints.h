@@ -1,5 +1,5 @@
 #ifndef ENDPOINTS_H
-#define ENDPOINTS
+#define ENDPOINTS_H
 
 
 #define INTERNET_PREF_CONFIG_ENDPOINT "/netpref"
