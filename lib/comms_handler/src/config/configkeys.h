@@ -21,6 +21,31 @@
 #define STATION_SSID_KEY "stassid"
 #define STATION_PASS_KEY "stapass"
 
+#define A76XX_APN_NAME_KEY "apnname"
+
+#define MQTT_CLIENT_ID_KEY "mqttid"
+#define MQTT_USERNAME_KEY "mqttuser"
+#define MQTT_PASSWORD_KEY "mqttpass"
+#define MQTT_SERVER_URL_KEY "mqtturl"
+#define MQTT_SERVER_PORT_KEY "mqttport"
+
+#define MQTT_KEEPALIVE_KEY "mkeepalive"
+#define MQTT_CLEAN_SESSION_KEY "mclean"
+#define MQTT_RETAIN_KEY "mretain"
+
+#define MQTT_CLEAN_SESSION_TRUE_OPTION "cleansessiontrue"
+#define MQTT_CLEAN_SESSION_FALSE_OPTION "cleansessionfalse"
+
+#define MQTT_RETAIN_TRUE_OPTION "retaintrue"
+#define MQTT_RETAIN_FALSE_OPTION "retainfalse"
+
+#define MQTT_LWT_TOPIC_KEY "lwttopic"
+#define MQTT_LWT_PAYLOAD_KEY "lwtpayload"
+#define MQTT_LWT_QOS_KEY "lwtqos"
+
+
+
+
 #define OTA_URL_KEY "otaurl"
 #define OTA_UPDATE_FREQUENCY_KEY "otafreq"
 
@@ -33,8 +58,6 @@
 #define DEVICE_FREE_HEAP_MSG_ID "deviceheap"
 #define DEVICE_MAX_ALLOC_HEAP_MSG_ID "devicemaxheap"
 #define DEVICE_SERIES_MSG_ID "deviceseries"
-
-//TODO: add more here later
 
 
 

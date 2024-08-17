@@ -698,7 +698,8 @@
         }
 
         button,
-        input {
+        input,
+        select {
             width: 100%;
         }
 
@@ -831,6 +832,11 @@
             font-style: italic;
             color: var(--text-light)
         }
+
+        .passhint {
+            font-size: 1rem;
+            color: var(--text-light);
+        }
     </style>
 </head>
 
@@ -880,7 +886,7 @@
 
     <!--STATUS CARD-->
     <article id="statuscard">
-        <h3>Device Status</h3>
+        <h3>System Information</h3>
         <table>
             <thead>
                 <tr>
@@ -917,7 +923,7 @@
                     <td>Max Alloc Heap</td>
                     <td class="infomeh" id="{{DEVICE_MAX_ALLOC_HEAP_MSG_ID}}">Loading ...</td>
                 </tr>
-                
+
             </tbody>
         </table>
         <div class="hint" id="statusupdatetimer">Not updated yet...</div>
@@ -925,9 +931,9 @@
 
     <!--CONFIG CARDS-->
     <article id="devicecard">
-        <h3>Device Settings</h3>
-        <form id="{{DEVICE_SET_SETTINGS_ENDPOINT}}"
-            onsubmit="fieldSetSendData(event,'{{DEVICE_SET_SETTINGS_ENDPOINT}}','{{DEVICE_SET_SETTINGS_ENDPOINT}}')">
+        <h3>System Settings</h3>
+        <form id="devicesettingsform"
+            onsubmit="fieldSetSendData(event,'devicesettingsform','{{DEVICE_SET_SETTINGS_ENDPOINT}}')">
             <label for="{{DEVICE_UID_KEY}}">Device UID</label>
             <input id="{{DEVICE_UID_KEY}}" type="text" name="{{DEVICE_UID_KEY}}" value=""
                 placeholder="Leave blank for MAC address" />
@@ -940,9 +946,88 @@
             </div>
         </form>
     </article>
+    <article id="apcard">
+        <h3>Access Point</h3>
+        <form id="apcfg" onsubmit="fieldSetSendData(event,'apcfg','{{AP_SET_CONFIG_ENDPOINT}}')">
+            <label for="{{ACCESSPOINT_SSID_KEY}}">Access Point SSID</label>
+            <input id="{{ACCESSPOINT_SSID_KEY}}" type="text" name="{{ACCESSPOINT_SSID_KEY}}" value=""
+                placeholder="{{UID_REPLACEMENT_PATTERN}} will be replaced by UID" />
+            <label for="{{ACCESSPOINT_PASS_KEY}}">Access Point Password</label>
+            <input id="ACCESSPOINT_PASS_KEY" type="password" name="ACCESSPOINT_PASS_KEY" value=""
+                placeholder="Password (leave empty for none)" />
+            <input type="checkbox" id="appass-toggle" name="appass-toggle" onclick="fieldSetTogglePassword('appass')">
+            <span class="passhint">Show Password</span>
+            </input>
+            <br>
+            <button type="submit">Save Access Point Preferences</button>
+            <div id="apupdate">
+
+            </div>
+        </form>
+    </article>
+    <article id="mqttcard">
+        <h3>MQTT</h3>
+        <dt>
+            This derives from the internet acess settings
+        </dt>
+        <form id="mqttcfgform" onsubmit="fieldSetSendData(event,'mqttcfgform','{{MQTT_SET_CONFIG_ENDPOINT}}')">
+
+            <label for="{{MQTT_CLIENT_ID_KEY}}">Client ID</label>
+            <input id="{{MQTT_CLIENT_ID_KEY}}" type="text" name="{{MQTT_CLIENT_ID_KEY}}" value=""
+                placeholder="{{UID_REPLACEMENT_PATTERN}} will be replaced by UID" />
+            <label for="{{MQTT_USERNAME_KEY}}">Username</label>
+            <input id="{{MQTT_USERNAME_KEY}}" type="text" name="{{MQTT_USERNAME_KEY}}" value=""
+                placeholder="Leave blank if none" />
+            <label for="{{MQTT_PASSWORD_KEY}}">Password</label>
+            <input id="{{MQTT_PASSWORD_KEY}}" type="password" name="{{MQTT_PASSWORD_KEY}}" value=""
+                placeholder="Leave blank if none" />
+            <input type="checkbox" id="mqttpass-toggle" onclick="fieldSetTogglePassword('mqttpass')">
+            <span class="passhint">Show Password</span>
+            </input>
+            <br>
+
+            <label for="{{MQTT_SERVER_URL_KEY}}">Server Address</label>
+            <input id="{{MQTT_SERVER_URL_KEY}}" type="text" name="{{MQTT_SERVER_URL_KEY}}" value=""
+                placeholder="test.mosquitto.org" />
+            <label for="{{MQTT_SERVER_PORT_KEY}}">Port</label>
+            <input id="{{MQTT_SERVER_PORT_KEY}}" type="number" name="{{MQTT_SERVER_PORT_KEY}}" value="" placeholder="1883"
+                min="0" max="65535" />
+
+            <label for="{{MQTT_KEEPALIVE_KEY}}">Keep alive time (s)</label>
+            <input id="{{MQTT_KEEPALIVE_KEY}}" type="number" name="{{MQTT_KEEPALIVE_KEY}}" value=""
+                placeholder="seconds" min="0" max="64800" />
+
+            <label for="{{MQTT_CLEAN_SESSION_KEY}}">Clean Session:</label>
+            <select id="{{MQTT_CLEAN_SESSION_KEY}}" name="{{MQTT_CLEAN_SESSION_KEY}}">
+                <option value="{{MQTT_CLEAN_SESSION_TRUE_OPTION}}">Use Clean Session</option>
+                <option value="{{MQTT_CLEAN_SESSION_FALSE_OPTION}}">Don't Use Clean Session</option>
+            </select>
+
+            <label for="{{MQTT_RETAIN_KEY}}">Retain:</label>
+            <select id="{{MQTT_RETAIN_KEY}}" name="{{MQTT_RETAIN_KEY}}">
+                <option value="{{MQTT_RETAIN_TRUE_OPTION}}">Retain</option>
+                <option value="{{MQTT_RETAIN_FALSE_OPTION}}">Don't Retain</option>
+            </select>
+
+            <label for="{{MQTT_LWT_TOPIC_KEY}}">Last Will Topic</label>
+            <input id="{{MQTT_LWT_TOPIC_KEY}}" type="text" name="{{MQTT_LWT_TOPIC_KEY}}" value=""
+                placeholder="Last Will Topic" />
+            <label for="{{MQTT_LWT_PAYLOAD_KEY}}">Last Will Message</label>
+            <input id="{{MQTT_LWT_PAYLOAD_KEY}}" type="text" name="{{MQTT_LWT_PAYLOAD_KEY}}" value=""
+                placeholder="Last Will Message" />
+            <label for="{{MQTT_LWT_QOS_KEY}}">Last Will QOS</label>
+            <input id="{{MQTT_LWT_QOS_KEY}}" type="number" name="{{MQTT_LWT_QOS_KEY}}" value="" min="0" max="2"
+                placeholder="0, 1, 2" />
+
+            <button type="submit">Save MQTT Preferences</button>
+    </article>
     <article id="internetcard">
         <h3>Internet Access</h3>
-        <form>
+        <dt>
+            Anything needing internet access will use the preferences here
+        </dt>
+        <form id="internetprefform"
+            onsubmit="fieldSetSendData(event,'internetprefform', '{{INTERNET_PREF_CONFIG_ENDPOINT}}')">
             <label for="{{NET_PRIORITY_PREF_KEY}}">Networking Mode:</label>
             <select id="{{NET_PRIORITY_PREF_KEY}}" name="{{NET_PRIORITY_PREF_KEY}}">
                 <option selected value="{{NET_WIFI_ONLY_PREF_OPTION}}">Use WiFi only</option>
@@ -955,6 +1040,16 @@
         <hr>
         <details>
             <summary>Mobile Data</summary>
+            <dt>
+                Uses the SIMCOM A76XX Module
+            </dt>
+            <form id="ltecfgform" onsubmit="fieldSetSendData(event,'ltecfgform', '{{LTE_SET_CONFIG_ENDPOINT}}')">
+                <label for="{{A76XX_APN_NAME_KEY}}">APN</label>
+                <input id="{{A76XX_APN_NAME_KEY}}" type="text" name="{{A76XX_APN_NAME_KEY}}" value=""
+                    placeholder="mobitel" />
+
+                <button type="submit">Save LTE Preferences</button>
+            </form>
         </details>
         <details>
             <summary>WiFi</summary>
@@ -984,7 +1079,7 @@
                 <input id="{{STATION_PASS_KEY}}" type="password" name="{{STATION_PASS_KEY}}" value=""
                     placeholder="Password" />
                 <input type="checkbox" id="stationpass-toggle" onclick="fieldSetTogglePassword('stapass')">
-                Show Password
+                <span class="passhint">Show Password</span>
                 </input>
                 <br>
                 <br>
@@ -992,28 +1087,7 @@
             </form>
         </details>
     </article>
-    <article id="apcard">
-        <h3>Access Point</h3>
-        <form id="apcfg" onsubmit="fieldSetSendData(event,'apcfg','{{AP_SET_CONFIG_ENDPOINT}}')">
-            <label for="apalways">
-                <input type="checkbox" id="apalways" name="apalways" checked /> Turn on AP always (even when connected
-                to WiFi)
-            </label>
-            <label for="{{ACCESSPOINT_SSID_KEY}}">Access Point SSID</label>
-            <input id="{{ACCESSPOINT_SSID_KEY}}" type="text" name="{{ACCESSPOINT_SSID_KEY}}" value=""
-                placeholder="{{UID_REPLACEMENT_PATTERN}} will be replaced by UID" />
-            <label for="{{ACCESSPOINT_PASS_KEY}}">Access Point Password</label>
-            <input id="ACCESSPOINT_PASS_KEY" type="password" name="ACCESSPOINT_PASS_KEY" value=""
-                placeholder="Password (leave empty for none)" />
-            <input type="checkbox" id="appass-toggle" name="appass-toggle" onclick="fieldSetTogglePassword('appass')" />
-            Show Password
-            <br>
-            <button type="submit">Save Access Point Preferences</button>
-            <div id="apupdate">
 
-            </div>
-        </form>
-    </article>
     <article id="otacard">
         <h3>Over-The-Air Firmware</h3>
         <form id="otacfg" onsubmit="fieldSetSendData(event,'otacfg','{{UPDATE_OTA_CONFIG_ENDPOINT}}')">
@@ -1330,10 +1404,37 @@
                             if (element.getAttribute("type") === "checkbox") {
                                 console.log("Setting checked [", key, "] to: ", jsonReplacements[key]);
                                 element.checked = jsonReplacements[key];
-                            } else {
+                            }
+                            else {
                                 console.log("Setting value for [", key, "] to: ", jsonReplacements[key]);
                                 element.value = jsonReplacements[key];
                             }
+                        }
+                        else if (element.tagName === "SELECT") {
+                            console.log("Setting option for [", key, "] to: ", jsonReplacements[key]);
+                            for (var i = 0; i < element.options.length; i++) {
+                                element.options[i].selected = false;
+                            }
+                            if (typeof jsonReplacements[key] === 'boolean') {
+                                // The 'true' must be the first option
+                                if (jsonReplacements[key]) {
+                                    element.options[0].selected = true;
+                                    element.value = element.options[0].value;
+                                } else {
+                                    element.options[1].selected = true;
+                                    element.value = element.options[1].value;
+                                }
+                            } else {
+                                for (var i = 0; i < element.options.length; i++) {
+                                    element.options[i].selected = false;
+                                    if (element.options[i].value === jsonReplacements[key]) {
+                                        element.options[i].selected = true;
+                                        element.value = element.options[i].value;
+                                        break;
+                                    }
+                                }
+                            }
+
                         }
                         else {
                             // Handle class assignment too

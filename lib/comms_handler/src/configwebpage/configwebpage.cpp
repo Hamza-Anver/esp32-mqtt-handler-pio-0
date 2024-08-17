@@ -8,6 +8,10 @@ static const char *TAG = "ConfigWebpage";
 #include CONFIG_KEYS_HEADER
 #include ENDPOINTS_HEADER
 
+/* -------------------------------------------------------------------------- */
+/*                        MAIN CONFIG WEBPAGE FUNCTIONS                       */
+/* -------------------------------------------------------------------------- */
+
 ConfigWebpage::ConfigWebpage(ConfigHelper *config_helper, OTAHelper *ota_helper)
 {
     _server = new AsyncWebServer(80);
@@ -70,6 +74,10 @@ ConfigWebpage::ConfigWebpage(ConfigHelper *config_helper, OTAHelper *ota_helper)
     _server->onNotFound([this](AsyncWebServerRequest *request)
                         { this->ConfigServeRootPage(request); });
 
+    // Internet preferences
+    _server->on(INTERNET_PREF_CONFIG_ENDPOINT, [this](AsyncWebServerRequest *request)
+                { this->handleReceiveInternetPreferences(request); });
+
     // Station callbacks
     _server->on(STA_START_SCAN_ENDPOINT, [this](AsyncWebServerRequest *request)
                 { this->handleStationStartScan(request); });
@@ -80,9 +88,17 @@ ConfigWebpage::ConfigWebpage(ConfigHelper *config_helper, OTAHelper *ota_helper)
     _server->on(STA_SEND_UPDATE_ENDPOINT, [this](AsyncWebServerRequest *request)
                 { this->handleStationSendUpdate(request); });
 
+    // LTE callbacks
+    _server->on(LTE_SET_CONFIG_ENDPOINT, [this](AsyncWebServerRequest *request)
+                { this->handleLTESetConfig(request); });
+
     // Access Point callbacks
     _server->on(AP_SET_CONFIG_ENDPOINT, [this](AsyncWebServerRequest *request)
                 { this->handleAccessPointSetConfig(request); });
+
+    // MQTT Callbacks
+    _server->on(MQTT_SET_CONFIG_ENDPOINT,[this](AsyncWebServerRequest *request)
+                { this->handleMQTTSetConfig(request); });
 
     // Config meta callbacks
     _server->on(CONFIG_JSON_GET_ENDPOINT, HTTP_GET, [this](AsyncWebServerRequest *request)
@@ -99,12 +115,14 @@ ConfigWebpage::ConfigWebpage(ConfigHelper *config_helper, OTAHelper *ota_helper)
     _server->on(RESTART_DEVICE_ENDPOINT, [this](AsyncWebServerRequest *request)
                 { this->handleDeviceRestart(request); });
 
-    // DEBUG OTA CALLBACK
+    // OTA Callbacks
     _server->on(UPDATE_OTA_BIN_URL_ENDPOINT, [this](AsyncWebServerRequest *request)
                 { this->handleUpdateOTANowRequest(request); });
 
     _server->on(UPDATE_OTA_STATUS_ENDPOINT, [this](AsyncWebServerRequest *request)
                 { this->handleUpdateOTAStatus(request); });
+
+    // TODO: Updating via file upload
 
     // Begin the server
     _server->begin();
@@ -143,11 +161,11 @@ void ConfigWebpage::handleSendCurrentConfigJSON(AsyncWebServerRequest *request)
 
 void ConfigWebpage::handleReceiveConfigJSON(AsyncWebServerRequest *request)
 {
+    // TODO: Receive JSON and save to NVS to make rapid config possible
 }
 
 void ConfigWebpage::handleSendStatusJSON(AsyncWebServerRequest *request)
 {
-    JsonDocument responsedoc;
 
     // WiFi status
     String message;
@@ -180,25 +198,25 @@ void ConfigWebpage::handleSendStatusJSON(AsyncWebServerRequest *request)
         break;
     }
 
-    responsedoc[WIFI_STATUS_MSG_ID]["msg"] = message;
-    responsedoc[WIFI_STATUS_MSG_ID]["class"] = css_class;
+    _update_json[WIFI_STATUS_MSG_ID]["msg"] = message;
+    _update_json[WIFI_STATUS_MSG_ID]["class"] = css_class;
 
     // IP Address
     message = String(WiFi.localIP().toString());
-    responsedoc[DEVICE_IP_MSG_ID] = message;
+    _update_json[DEVICE_IP_MSG_ID] = message;
 
     // Uptime
     message = String(esp_timer_get_time() / 1000000) + " seconds";
-    responsedoc[DEVICE_UPTIME_MSG_ID] = message;
+    _update_json[DEVICE_UPTIME_MSG_ID] = message;
 
     // Device heap
-    responsedoc[DEVICE_FREE_HEAP_MSG_ID] = ESP.getFreeHeap();
+    _update_json[DEVICE_FREE_HEAP_MSG_ID] = ESP.getFreeHeap();
 
     // Max alloc heap
-    responsedoc[DEVICE_MAX_ALLOC_HEAP_MSG_ID] = ESP.getMaxAllocHeap();
+    _update_json[DEVICE_MAX_ALLOC_HEAP_MSG_ID] = ESP.getMaxAllocHeap();
 
     String jsonString;
-    serializeJsonPretty(responsedoc, jsonString);
+    ArduinoJson::serializeJsonPretty(_update_json, jsonString);
 
     AsyncResponseStream *response = request->beginResponseStream("application/json");
     response->print(jsonString.c_str());
@@ -207,7 +225,9 @@ void ConfigWebpage::handleSendStatusJSON(AsyncWebServerRequest *request)
     ESP_LOGI(TAG, "Sending status JSON [%s]", jsonString.c_str());
 }
 
-/* ---------------------------- SETTINGS FUNCTION --------------------------- */
+/* -------------------------------------------------------------------------- */
+/*                              SETTINGS FUNCTION                             */
+/* -------------------------------------------------------------------------- */
 
 void ConfigWebpage::handleFactoryReset(AsyncWebServerRequest *request)
 {
@@ -216,7 +236,7 @@ void ConfigWebpage::handleFactoryReset(AsyncWebServerRequest *request)
     JsonDocument responsedoc;
     responsedoc["updatemsg"] = "<p class='updategood'> Configuration has been reset! </p>";
     String jsonString;
-    serializeJson(responsedoc, jsonString);
+    ArduinoJson::serializeJson(responsedoc, jsonString);
 
     AsyncResponseStream *response = request->beginResponseStream("application/json");
     response->print(jsonString.c_str());
@@ -230,13 +250,98 @@ void ConfigWebpage::handleDeviceRestart(AsyncWebServerRequest *request)
     JsonDocument responsedoc;
     responsedoc["updatemsg"] = "<p class='update'> Restarting </p>";
     String jsonString;
-    serializeJson(responsedoc, jsonString);
+    ArduinoJson::serializeJson(responsedoc, jsonString);
 
     AsyncResponseStream *response = request->beginResponseStream("application/json");
     response->print(jsonString.c_str());
     request->send(response);
     vTaskDelay(pdMS_TO_TICKS(500));
     ESP.restart();
+}
+/* -------------------------------------------------------------------------- */
+/*                               INTERNET ACCESS                              */
+/* -------------------------------------------------------------------------- */
+
+/* -------------------------- INTERNET PREFERENCES -------------------------- */
+void ConfigWebpage::handleReceiveInternetPreferences(AsyncWebServerRequest *request)
+{
+    int params = request->params();
+    ESP_LOGI(TAG, "Callback Received [Params: %d]", params);
+    String interneturl = "";
+    for (int i = 0; i < params; i++)
+    {
+        AsyncWebParameter *p = request->getParam(i);
+        ESP_LOGI(TAG, "POST[%s]: %s", p->name().c_str(), p->value().c_str());
+        if (strcmp(p->name().c_str(), NET_PRIORITY_PREF_KEY) == 0)
+        {
+            _config_helper->setConfigOption(NET_PRIORITY_PREF_KEY, p->value().c_str());
+        }
+    }
+
+    JsonDocument responsedoc;
+
+    String updatemsg = "";
+    updatemsg += "<p class='updategood'> Internet Preferences have been saved! [" +
+                 String(_config_helper->getConfigOption(NET_PRIORITY_PREF_KEY, "ERROR")) + "] </p>";
+
+    responsedoc["updatemsg"] = updatemsg;
+
+    String jsonString;
+    ArduinoJson::serializeJson(responsedoc, jsonString);
+    AsyncResponseStream *response = request->beginResponseStream("application/json");
+    response->print(jsonString.c_str());
+    request->send(response);
+}
+
+/* ------------------------------ LTE FUNCTIONS ----------------------------- */
+void ConfigWebpage::handleLTESetConfig(AsyncWebServerRequest *request)
+{
+    int params = request->params();
+    ESP_LOGI(TAG, "Callback Received [Params: %d]", params);
+    String lteapn = "";
+    for (int i = 0; i < params; i++)
+    {
+        AsyncWebParameter *p = request->getParam(i);
+        ESP_LOGI(TAG, "POST[%s]: %s", p->name().c_str(), p->value().c_str());
+        if (strcmp(p->name().c_str(), A76XX_APN_NAME_KEY) == 0)
+        {
+            lteapn = p->value();
+        }
+    }
+
+    // Validate APN
+    String err_msg = "";
+
+    if(lteapn.length() == 0){
+        err_msg += "APN field is empty <br>";
+    }
+    for(int i = 0; i < lteapn.length(); i++){
+        char c = lteapn.charAt(i);
+        if(!(isAlphaNumeric(c) || c == '-' || c == '_' || c == '.' || c == ' ')){
+            err_msg += "APN has unallowed char(s) <br>";
+            break;
+        }
+    }
+
+
+    JsonDocument responsedoc;
+
+    String updatemsg = "";
+    if(err_msg.length() > 0){
+        updatemsg += "<p class='updatebad'> " + err_msg + "<br> LTE settings not saved </p>";
+    }
+    else{
+        _config_helper->setConfigOption(A76XX_APN_NAME_KEY, lteapn.c_str());
+        updatemsg += "<p class='updategood'> LTE Preferences have been saved! </p>";
+    }
+
+    responsedoc["updatemsg"] = updatemsg;
+
+    String jsonString;
+    ArduinoJson::serializeJson(responsedoc, jsonString);
+    AsyncResponseStream *response = request->beginResponseStream("application/json");
+    response->print(jsonString.c_str());
+    request->send(response);
 }
 
 /* ---------------------------- STATION FUNCTIONS --------------------------- */
@@ -280,7 +385,7 @@ void ConfigWebpage::handleStationScanResults(AsyncWebServerRequest *request)
     }
 
     String jsonString;
-    serializeJson(jsonDoc, jsonString);
+    ArduinoJson::serializeJson(jsonDoc, jsonString);
     AsyncResponseStream *response = request->beginResponseStream("application/json");
     response->print(jsonString);
 
@@ -317,7 +422,7 @@ void ConfigWebpage::handleStationSetConfig(AsyncWebServerRequest *request)
     responsedoc["updatemsg"] = "<p class='update'> Connecting to WiFi Network </p>";
     responsedoc["timeout"] = "1000";
     String jsonString;
-    serializeJson(responsedoc, jsonString);
+    ArduinoJson::serializeJson(responsedoc, jsonString);
 
     AsyncResponseStream *response = request->beginResponseStream("application/json");
     response->print(jsonString.c_str());
@@ -375,14 +480,254 @@ void ConfigWebpage::handleStationSendUpdate(AsyncWebServerRequest *request)
     }
 
     String jsonString = "";
-    serializeJson(responsedoc, jsonString);
+    ArduinoJson::serializeJson(responsedoc, jsonString);
 
     AsyncResponseStream *response = request->beginResponseStream("application/json");
     response->print(jsonString.c_str());
     request->send(response);
 }
 
-/* ---------------------- ACCESS POINT CONFIG FUNCTION ---------------------- */
+/* -------------------------------------------------------------------------- */
+/*                            MQTT CONFIG FUNCTION                            */
+/* -------------------------------------------------------------------------- */
+
+void ConfigWebpage::handleMQTTSetConfig(AsyncWebServerRequest *request)
+{
+    int params = request->params();
+    ESP_LOGI(TAG, "Callback Received [Params: %d]", params);
+
+    // Temporary variables to store arguments
+    // This is not the most efficient way to do this
+    // but it'll work for now
+    String mqtt_client_id = "";
+    String mqtt_username = "";
+    String mqtt_password = "";
+    String mqtt_server_url = "";
+    int mqtt_server_port = 0;
+    int mqtt_keepalive = 0;
+    bool mqtt_clean_session = false;
+    bool mqtt_retain = false;
+    String mqtt_lwt_topic = "";
+    String mqtt_lwt_payload = "";
+    int mqtt_lwt_qos = 0;
+
+    String response_msgs = "";
+    String err_msgs = "";
+
+    bool errordet = false;
+
+    for (int i = 0; i < params; i++)
+    {
+        errordet = false;
+        AsyncWebParameter *p = request->getParam(i);
+
+        ESP_LOGI(TAG, "POST[%s]: %s", p->name().c_str(), p->value().c_str());
+
+        if (strcmp(p->name().c_str(), MQTT_CLIENT_ID_KEY) == 0)
+        {
+
+            // Check MQTT Client ID
+            mqtt_client_id = p->value();
+
+            // Add UID if pattern match
+            if (mqtt_client_id != "" && mqtt_client_id.length() < 256)
+            {
+                // TODO: case insensitve replacement
+                mqtt_client_id.replace(UID_REPLACEMENT_PATTERN, _config_helper->getDeviceMACString());
+            }
+            for (int i = 0; i < mqtt_client_id.length(); i++)
+            {
+                char c = mqtt_client_id.charAt(i);
+                if (!(isAlphaNumeric(c) || c == '-' || c == '_' || c == '.' || c == ' '))
+                {
+                    err_msgs += "MQTT Client ID has unallowed char(s) <br>";
+                    errordet = true;
+                    break;
+                }
+            }
+
+            if (!errordet)
+            {
+                response_msgs += "MQTT Client ID [" + mqtt_client_id + "] saved <br>";
+            }
+        }
+        else if (strcmp(p->name().c_str(), MQTT_USERNAME_KEY) == 0)
+        {
+            mqtt_username = p->value();
+            for (int i = 0; i < mqtt_username.length(); i++)
+            {
+                char c = mqtt_username.charAt(i);
+                if (!(isAlphaNumeric(c) || c == '-' || c == '_' || c == '.' || c == ' '))
+                {
+                    err_msgs += "MQTT Username has unallowed char(s) <br>";
+                    errordet = true;
+                    break;
+                }
+            }
+
+            if (!errordet)
+            {
+                if (mqtt_username.length() == 0)
+                {
+                    response_msgs += "MQTT username left empty <br>";
+                }
+                else
+                {
+                    response_msgs += "MQTT username [" + mqtt_username + "] saved <br>";
+                }
+            }
+        }
+        else if (strcmp(p->name().c_str(), MQTT_PASSWORD_KEY) == 0)
+        {
+            mqtt_password = p->value();
+
+            if (!errordet)
+            {
+                if (mqtt_username.length() == 0)
+                {
+                    response_msgs += "MQTT password left empty <br>";
+                }
+                else
+                {
+                    response_msgs += "MQTT password saved <br>";
+                }
+            }
+        }
+        else if (strcmp(p->name().c_str(), MQTT_SERVER_URL_KEY) == 0)
+        {
+            mqtt_server_url = p->value();
+
+            if (mqtt_server_url.length() == 0)
+            {
+                err_msgs += "MQTT Server URL left empty <br>";
+            }
+            else if (mqtt_server_url.length() > 256)
+            {
+                err_msgs += "MQTT Server URL too long <br>";
+            }
+            else if (mqtt_server_url.indexOf(" ") >= 0)
+            {
+                err_msgs += "MQTT Server URL contains spaces <br>";
+            }
+            else
+            {
+                response_msgs += "MQTT Server URL [" + mqtt_server_url + "] saved <br>";
+            }
+        }
+        else if (strcmp(p->name().c_str(), MQTT_SERVER_PORT_KEY) == 0)
+        {
+            mqtt_server_port = p->value().toInt();
+            if (mqtt_server_port < 1 || mqtt_server_port > 65535)
+            {
+                err_msgs += "MQTT Server Port is not between 1 and 65535 <br>";
+            }
+            else
+            {
+                response_msgs += "MQTT Server Port [" + String(mqtt_server_port) + "] saved <br>";
+            }
+        }
+        else if (strcmp(p->name().c_str(), MQTT_KEEPALIVE_KEY) == 0)
+        {
+            mqtt_keepalive = p->value().toInt();
+
+            if (mqtt_keepalive < 0)
+            {
+                err_msgs += "MQTT Keepalive is negative";
+            }
+            else
+            {
+                if (mqtt_keepalive == 0)
+                {
+                    response_msgs += "MQTT Keepalive disabled <br>";
+                }
+                else
+                {
+                    response_msgs += "MQTT Keepalive [" + String(mqtt_keepalive) + "] saved <br>";
+                }
+            }
+        }
+        else if (strcmp(p->name().c_str(), MQTT_CLEAN_SESSION_KEY) == 0)
+        {
+            mqtt_clean_session = (strcmp(p->value().c_str(), MQTT_CLEAN_SESSION_TRUE_OPTION) == 0);
+            response_msgs += "MQTT Clean Session [" + String(mqtt_clean_session) + "] saved <br>";
+        }
+        else if (strcmp(p->name().c_str(), MQTT_RETAIN_KEY) == 0)
+        {
+            mqtt_retain = (strcmp(p->value().c_str(), MQTT_RETAIN_TRUE_OPTION) == 0);
+            response_msgs += "MQTT Retain [" + String(mqtt_retain) + "] saved <br>";
+        }
+        else if (strcmp(p->name().c_str(), MQTT_LWT_TOPIC_KEY) == 0)
+        {
+            mqtt_lwt_topic = p->value();
+            if (mqtt_lwt_topic.length() == 0)
+            {
+                response_msgs += "MQTT LWT Topic left empty <br>";
+            }
+            else
+            {
+                response_msgs += "MQTT LWT Topic [" + mqtt_lwt_topic + "] saved <br>";
+            }
+        }
+        else if (strcmp(p->name().c_str(), MQTT_LWT_PAYLOAD_KEY) == 0)
+        {
+            mqtt_lwt_payload = p->value();
+            if (mqtt_lwt_payload.length() == 0)
+            {
+                response_msgs += "MQTT LWT Payload left empty <br>";
+            }
+            else
+            {
+                response_msgs += "MQTT LWT Payload [" + mqtt_lwt_payload + "]saved <br>";
+            }
+        }
+        else if (strcmp(p->name().c_str(), MQTT_LWT_QOS_KEY) == 0)
+        {
+            mqtt_lwt_qos = p->value().toInt();
+            if (mqtt_lwt_qos < 0 || mqtt_lwt_qos > 2)
+            {
+                err_msgs += "MQTT LWT QoS is not between 0 and 2 <br>";
+            }
+            else
+            {
+                response_msgs += "MQTT LWT QoS [" + String(mqtt_lwt_qos) + "] saved <br>";
+            }
+        }
+    }
+
+    JsonDocument responsedoc;
+
+    if (err_msgs.length() == 0)
+    {
+        // i.e. no errors
+        _config_helper->setConfigOption(MQTT_CLIENT_ID_KEY, mqtt_client_id.c_str());
+        _config_helper->setConfigOption(MQTT_USERNAME_KEY, mqtt_username.c_str());
+        _config_helper->setConfigOption(MQTT_PASSWORD_KEY, mqtt_password.c_str());
+        _config_helper->setConfigOption(MQTT_SERVER_URL_KEY, mqtt_server_url.c_str());
+        _config_helper->setConfigOption(MQTT_SERVER_PORT_KEY, mqtt_server_port);
+        _config_helper->setConfigOption(MQTT_KEEPALIVE_KEY, mqtt_keepalive);
+        _config_helper->setConfigOption(MQTT_CLEAN_SESSION_KEY, mqtt_clean_session);
+        _config_helper->setConfigOption(MQTT_RETAIN_KEY, mqtt_retain);
+        _config_helper->setConfigOption(MQTT_LWT_TOPIC_KEY, mqtt_lwt_topic.c_str());
+        _config_helper->setConfigOption(MQTT_LWT_PAYLOAD_KEY, mqtt_lwt_payload.c_str());
+        _config_helper->setConfigOption(MQTT_LWT_QOS_KEY, mqtt_lwt_qos);
+        responsedoc["updatemsg"] = "<p class='updategood'>" +
+                                   response_msgs + "<br> MQTT Config has been saved! </p>";
+    }else{
+        responsedoc["updatemsg"] = "<p class='updatebad'>" + 
+                                    err_msgs + "<br> MQTT Config not saved :( </p>";
+    }
+
+    String jsonString;
+    ArduinoJson::serializeJson(responsedoc, jsonString);
+
+    AsyncResponseStream *response = request->beginResponseStream("application/json");
+    response->print(jsonString.c_str());
+    request->send(response);
+}
+
+/* -------------------------------------------------------------------------- */
+/*                        ACCESS POINT CONFIG FUNCTION                        */
+/* -------------------------------------------------------------------------- */
 void ConfigWebpage::handleAccessPointSetConfig(AsyncWebServerRequest *request)
 {
     int params = request->params();
@@ -459,7 +804,7 @@ void ConfigWebpage::handleAccessPointSetConfig(AsyncWebServerRequest *request)
     }
 
     String jsonString;
-    serializeJson(responsedoc, jsonString);
+    ArduinoJson::serializeJson(responsedoc, jsonString);
 
     AsyncResponseStream *response = request->beginResponseStream("application/json");
     response->print(jsonString.c_str());
@@ -485,7 +830,7 @@ void ConfigWebpage::handleUpdateOTAStatus(AsyncWebServerRequest *request)
     }
 
     String jsonString;
-    serializeJson(responsedoc, jsonString);
+    ArduinoJson::serializeJson(responsedoc, jsonString);
 
     AsyncResponseStream *response = request->beginResponseStream("application/json");
     response->print(jsonString.c_str());
@@ -524,7 +869,7 @@ void ConfigWebpage::handleUpdateOTANowRequest(AsyncWebServerRequest *request)
     }
 
     String jsonString;
-    serializeJson(responsedoc, jsonString);
+    ArduinoJson::serializeJson(responsedoc, jsonString);
 
     AsyncResponseStream *response = request->beginResponseStream("application/json");
     response->print(jsonString.c_str());

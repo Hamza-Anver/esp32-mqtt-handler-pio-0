@@ -33,16 +33,23 @@ public:
     void handleUpdateOTAFileUpload(AsyncWebServerRequest *request);
     void handleUpdateOTANowRequest(AsyncWebServerRequest *request);
 
+    void handleReceiveInternetPreferences(AsyncWebServerRequest *request);
+
     void handleStationStartScan(AsyncWebServerRequest *request);
     void handleStationScanResults(AsyncWebServerRequest *request);
     void handleStationSetConfig(AsyncWebServerRequest *request);
     void handleStationSendUpdate(AsyncWebServerRequest *request);
 
+    void handleLTESetConfig(AsyncWebServerRequest *request);
+
     void handleAccessPointSetConfig(AsyncWebServerRequest *request);
+
+    void handleMQTTSetConfig(AsyncWebServerRequest *request);
 
     /* ---------------------- END OF CALL BACK FUNCTIONS ------------------------ */
 
     ConfigHelper *_config_helper;
+    JsonDocument _update_json;
     OTAHelper *_ota_helper;
     AsyncWebServer *_server;
     DNSServer *_dnsServer;

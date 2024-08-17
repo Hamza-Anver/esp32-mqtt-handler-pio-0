@@ -1,11 +1,17 @@
 #ifndef ENDPOINTS_H
 #define ENDPOINTS
 
-// ENDPOINT DECLARATIONS
+
+#define INTERNET_PREF_CONFIG_ENDPOINT "/netpref"
+
 #define STA_START_SCAN_ENDPOINT "/startscan"
 #define STA_SCAN_RESULTS_ENDPOINT "/getscan"
-#define STA_SET_CONFIG_ENDPOINT "/stationcfg"
-#define STA_SEND_UPDATE_ENDPOINT "/stationcfgupdate"
+#define STA_SET_CONFIG_ENDPOINT "/stacfg"
+#define STA_SEND_UPDATE_ENDPOINT "/stacfgupdate"
+
+#define LTE_SET_CONFIG_ENDPOINT "/ltecfg"
+
+#define MQTT_SET_CONFIG_ENDPOINT "/mqttcfg"
 
 #define AP_SET_CONFIG_ENDPOINT "/apsetconfig"
 

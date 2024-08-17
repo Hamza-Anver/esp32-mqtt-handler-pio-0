@@ -45,8 +45,31 @@ void ConfigHelper::restoreDefaultConfigJSON(bool write_to_nvs)
     String apssid_temp = "NB_IoT_" + _config_json[DEVICE_UID_KEY].as<String>();
     _config_json[ACCESSPOINT_SSID_KEY] = apssid_temp;
     _config_json[ACCESSPOINT_PASS_KEY] = "";
+
+    // Internet Access
+    _config_json[NET_PRIORITY_PREF_KEY] = NET_WIFI_THEN_LTE_PREF_OPTION;
+
     _config_json[STATION_SSID_KEY] = "Hamza Pixel 6a";
     _config_json[STATION_PASS_KEY] = "ham54321";
+
+    _config_json[A76XX_APN_NAME_KEY] = "internet";
+
+
+    // MQTT Configurations
+    _config_json[MQTT_CLIENT_ID_KEY] = _config_json[DEVICE_UID_KEY];
+    _config_json[MQTT_USERNAME_KEY] = "";
+    _config_json[MQTT_PASSWORD_KEY] = "";
+    _config_json[MQTT_SERVER_URL_KEY] = "test.mosquitto.org";
+    _config_json[MQTT_SERVER_PORT_KEY] = 1883;
+
+    _config_json[MQTT_KEEPALIVE_KEY] = 60;
+    _config_json[MQTT_CLEAN_SESSION_KEY] = true;
+    _config_json[MQTT_RETAIN_KEY] = false;
+
+    _config_json[MQTT_LWT_TOPIC_KEY] = _config_json[DEVICE_UID_KEY].as<String>() + "/lwt";
+    _config_json[MQTT_LWT_PAYLOAD_KEY] = "offline";
+    _config_json[MQTT_LWT_QOS_KEY] = 0;
+
 
     if (write_to_nvs)
     {
