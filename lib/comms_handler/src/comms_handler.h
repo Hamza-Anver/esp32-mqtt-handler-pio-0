@@ -39,10 +39,10 @@ public:
     // Internet preferences
     enum CommsHandler_Net_Pref_t
     {
-        WiFi_Only,
-        LTE_Only,
-        WiFi_then_LTE,
-        LTE_then_WiFi
+        Comms_WiFi_Only,
+        Comms_LTE_Only,
+        Comms_WiFi_over_LTE,
+        Comms_LTE_over_WiFi
     };
 
     // All states of operation
@@ -99,6 +99,9 @@ public:
     static void CommsHandlerManagementTask(void *pvParameters);
     static void CommsHandlerQueueTask(void *pvParameters);
 
+    static void CommsHandlerLTETask(void *pvParameters);
+    static void CommsHandlerWiFiTask(void *pvParameters);
+
     struct BlinkPattern_t
     {
         int num_blinks;
@@ -113,13 +116,21 @@ public:
 private:
     void _load_current_config();
 
-    void _a76xx_power_on();
-    void _a76xx_mqtt_init();
-    void _a76xx_mqtt_pub();
-    void _a76xx_mqtt_sub();
-    void _a76xx_power_off();
+    void _lte_power_on();
+    void _lte_power_off();
+    bool _lte_mqtt_init();
+    bool _lte_mqtt_pub(String topic, String payload, int qos, bool retain, bool dup);
+    void _lte_mqtt_sub();
 
-    void _wifi_init();
+    void _lte_get_state();
+
+    void _wifi_power_on();
+    void _wifi_mqtt_init();
+    void _wifi_mqtt_pub();
+    void _wifi_mqtt_sub();
+    void _wifi_power_off();
+
+    void _wifi_get_state();
 
     // Sub components
     OTAHelper *_ota_helper;
@@ -129,6 +140,7 @@ private:
     CommsHandler_State_t _state;
     CommsHandler_Error_t _error;
     CommsHandler_Net_Pref_t _net_preference;
+    int _net_pref_switch_timeout;
 
     // Local variables
     QueueHandle_t _mqtt_msg_queue;
@@ -141,14 +153,22 @@ private:
     String _mqtt_username;
     String _mqtt_password;
     String _mqtt_client_id;
+    int _mqtt_keepalive;
+    bool _mqtt_clean_session;
+    String _mqtt_lwt_topic;
+    String _mqtt_lwt_payload;
+    int _mqtt_lwt_qos;
 
     int _size_mqtt_msg_queue;
 
-    // Clients
-    A76XX *_a76xx;
+    String _lte_apn;
 
-    MQTTClient *_mqtt_client;
-    WiFiClient *_wifi_client;
+    // Clients
+    A76XX *_lte_client = nullptr;
+    A76XXMQTTClient *_lte_mqtt_client = nullptr;
+
+    MQTTClient *_wifi_mqtt_client = nullptr;
+    WiFiClient *_wifi_client = nullptr;
 };
 
 #endif // _COMMS_HANDLER

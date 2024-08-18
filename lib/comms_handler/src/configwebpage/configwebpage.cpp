@@ -97,7 +97,7 @@ ConfigWebpage::ConfigWebpage(ConfigHelper *config_helper, OTAHelper *ota_helper)
                 { this->handleAccessPointSetConfig(request); });
 
     // MQTT Callbacks
-    _server->on(MQTT_SET_CONFIG_ENDPOINT,[this](AsyncWebServerRequest *request)
+    _server->on(MQTT_SET_CONFIG_ENDPOINT, [this](AsyncWebServerRequest *request)
                 { this->handleMQTTSetConfig(request); });
 
     // Config meta callbacks
@@ -312,25 +312,29 @@ void ConfigWebpage::handleLTESetConfig(AsyncWebServerRequest *request)
     // Validate APN
     String err_msg = "";
 
-    if(lteapn.length() == 0){
+    if (lteapn.length() == 0)
+    {
         err_msg += "APN field is empty <br>";
     }
-    for(int i = 0; i < lteapn.length(); i++){
+    for (int i = 0; i < lteapn.length(); i++)
+    {
         char c = lteapn.charAt(i);
-        if(!(isAlphaNumeric(c) || c == '-' || c == '_' || c == '.' || c == ' ')){
+        if (!(isAlphaNumeric(c) || c == '-' || c == '_' || c == '.' || c == ' '))
+        {
             err_msg += "APN has unallowed char(s) <br>";
             break;
         }
     }
 
-
     JsonDocument responsedoc;
 
     String updatemsg = "";
-    if(err_msg.length() > 0){
+    if (err_msg.length() > 0)
+    {
         updatemsg += "<p class='updatebad'> " + err_msg + "<br> LTE settings not saved </p>";
     }
-    else{
+    else
+    {
         _config_helper->setConfigOption(A76XX_APN_NAME_KEY, lteapn.c_str());
         updatemsg += "<p class='updategood'> LTE Preferences have been saved! </p>";
     }
@@ -415,12 +419,49 @@ void ConfigWebpage::handleStationSetConfig(AsyncWebServerRequest *request)
         }
     }
 
-    JsonDocument responsedoc;
-    responsedoc["endpoint"] = STA_SEND_UPDATE_ENDPOINT;
     // TODO: Validate SSID and Password before attempting connection and saving
-    WiFi.begin(_sta_ssid.c_str(), _sta_pass.c_str());
-    responsedoc["updatemsg"] = "<p class='update'> Connecting to WiFi Network </p>";
-    responsedoc["timeout"] = "1000";
+
+    String err_msg = "";
+
+    if (_sta_ssid.length() < 1 || _sta_ssid.length() > 32)
+    {
+        err_msg += "SSID is not the right length <br>";
+    }
+
+    // Check if all characters are valid (alphanumeric or allowed special characters)
+    for (int i = 0; i < _sta_ssid.length(); i++)
+    {
+        char c = _sta_ssid.charAt(i);
+        if (!(isAlphaNumeric(c) || c == '-' || c == '_' || c == '.' || c == ' '))
+        {
+            err_msg += "SSID has unallowed character(s) <br>";
+            break;
+        }
+    }
+
+    JsonDocument responsedoc;
+    if (err_msg.length() == 0)
+    {
+        WiFi.disconnect();
+        if (_sta_pass.length() == 0)
+        {
+            WiFi.begin(_sta_ssid.c_str());
+        }
+        else
+        {
+            WiFi.begin(_sta_ssid.c_str(), _sta_pass.c_str());
+        }
+
+        responsedoc["endpoint"] = STA_SEND_UPDATE_ENDPOINT;
+        String update_msg = "<p class='update'> Trying to connect to '" + _sta_ssid + "' </p>";
+        responsedoc["updatemsg"] = update_msg;
+        responsedoc["timeout"] = "1000";
+    }
+    else
+    {
+        responsedoc["updatemsg"] = "<p class='updatebad'> " + err_msg + "<br> Credentials not saved </p>";
+    }
+
     String jsonString;
     ArduinoJson::serializeJson(responsedoc, jsonString);
 
@@ -712,9 +753,11 @@ void ConfigWebpage::handleMQTTSetConfig(AsyncWebServerRequest *request)
         _config_helper->setConfigOption(MQTT_LWT_QOS_KEY, mqtt_lwt_qos);
         responsedoc["updatemsg"] = "<p class='updategood'>" +
                                    response_msgs + "<br> MQTT Config has been saved! </p>";
-    }else{
-        responsedoc["updatemsg"] = "<p class='updatebad'>" + 
-                                    err_msgs + "<br> MQTT Config not saved :( </p>";
+    }
+    else
+    {
+        responsedoc["updatemsg"] = "<p class='updatebad'>" +
+                                   err_msgs + "<br> MQTT Config not saved :( </p>";
     }
 
     String jsonString;
