@@ -4,6 +4,11 @@
 
 static const char *TAG = "ConfigHelper";
 
+/**
+ * @brief Construct a new Config Helper:: Config Helper object
+ * 
+ * @param factoryreset overwrite the current config (if exists) with the default config
+ */
 ConfigHelper::ConfigHelper(bool factoryreset)
 {
     if (factoryreset)
@@ -23,6 +28,13 @@ ConfigHelper::~ConfigHelper()
     _config_json.clear();
 }
 
+/**
+ * @brief Helper function to get device MAC as a string
+ * 
+ * String has special characters already removed
+ * 
+ * @return String 
+ */
 String ConfigHelper::getDeviceMACString(){
     String mac = WiFi.macAddress();
     mac.replace(":", "");
@@ -30,6 +42,14 @@ String ConfigHelper::getDeviceMACString(){
     return mac;
 }
 
+/**
+ * @brief All the default options of the configuration set to the JSON object
+ * 
+ * JSON object is cleared first
+ * Formats strings with the Device MAC string where necessary
+ * 
+ * @param write_to_nvs 
+ */
 void ConfigHelper::restoreDefaultConfigJSON(bool write_to_nvs)
 {
     // Is the clear necessary?
@@ -82,6 +102,10 @@ void ConfigHelper::restoreDefaultConfigJSON(bool write_to_nvs)
     }
 }
 
+/**
+ * @brief Load the configuration from NVS to JSON object
+ * 
+ */
 void ConfigHelper::loadConfigJSONFromNVS()
 {
     ESP_LOGI(TAG, "Loading config JSON from NVS");
@@ -99,6 +123,10 @@ void ConfigHelper::loadConfigJSONFromNVS()
     _preferences.end();
 }
 
+/**
+ * @brief Save the configuration JSON to NVS
+ * 
+ */
 void ConfigHelper::saveConfigJSONToNVS()
 {
     ESP_LOGI(TAG, "Saving config JSON to NVS");
@@ -111,6 +139,11 @@ void ConfigHelper::saveConfigJSONToNVS()
     _preferences.end();
 }
 
+/**
+ * @brief Get the JSON string of the configuration
+ * 
+ * @return String 
+ */
 String ConfigHelper::getConfigJSONString()
 {
     String jsonstring;
@@ -121,6 +154,12 @@ String ConfigHelper::getConfigJSONString()
 }
 
 /* ------------------------ GET CONFIG VALUE FROM NVS ----------------------- */
+/**
+ * @brief Writes the value of the key from NVS to the value of the key in the JSON object
+ * 
+ * @param key the key to get from NVS
+ * @param open_namespace flag to open the namespace, set to false if handled externally
+ */
 void ConfigHelper::getConfigOptionNVS(const char *key, bool open_namespace)
 {
     // Only four data types for now
@@ -161,6 +200,12 @@ void ConfigHelper::getConfigOptionNVS(const char *key, bool open_namespace)
 }
 
 /* ------------------------- SET CONFIG VALUE IN NVS ------------------------ */
+/**
+ * @brief Writes the value of the key from the JSON object to the NVS
+ * 
+ * @param key the key to write to NVS (15 char limit?)
+ * @param open_namespace flag to open the namespace, set to false if handled externally
+ */
 void ConfigHelper::setConfigOptionNVS(const char *key, bool open_namespace)
 {
     if(open_namespace){
@@ -203,6 +248,7 @@ void ConfigHelper::setConfigOptionNVS(const char *key, bool open_namespace)
 /* ----------------- PUBLICLY ACCESS CONFIG OPTION FUNCTIONS ---------------- */
 
 /* ---------------------------- GETTER FUNCTIONS ---------------------------- */
+// Get an integer value from the configuration
 int ConfigHelper::getConfigOption(const char *key, int default_value)
 {
     // No need to access Preferences for this
@@ -217,6 +263,7 @@ int ConfigHelper::getConfigOption(const char *key, int default_value)
     }
 }
 
+// Get a string value from the configuration
 String ConfigHelper::getConfigOption(const char *key, const char *default_value)
 {
     // No need to access Preferences for this
@@ -231,6 +278,7 @@ String ConfigHelper::getConfigOption(const char *key, const char *default_value)
     }
 }
 
+// Get a boolean value from the configuration
 bool ConfigHelper::getConfigOption(const char *key, bool default_value)
 {
     // No need to access Preferences for this
@@ -245,6 +293,7 @@ bool ConfigHelper::getConfigOption(const char *key, bool default_value)
     }
 }
 
+// Get a float value from the configuration
 float ConfigHelper::getConfigOption(const char *key, float default_value)
 {
     // No need to access Preferences for this
@@ -260,6 +309,7 @@ float ConfigHelper::getConfigOption(const char *key, float default_value)
 }
 
 /* ---------------------------- SETTER FUNCTIONS ---------------------------- */
+// Set an integer value in the configuration
 void ConfigHelper::setConfigOption(const char *key, int value, bool write_to_nvs)
 {
     if (_config_json[key].is<int>())
@@ -274,6 +324,7 @@ void ConfigHelper::setConfigOption(const char *key, int value, bool write_to_nvs
     }
 }
 
+// Set a string value in the configuration
 void ConfigHelper::setConfigOption(const char *key, const char *value, bool write_to_nvs)
 {
     if (_config_json[key].is<String>())
@@ -290,6 +341,7 @@ void ConfigHelper::setConfigOption(const char *key, const char *value, bool writ
     }
 }
 
+// Set a boolean value in the configuration
 void ConfigHelper::setConfigOption(const char *key, bool value, bool write_to_nvs)
 {
     if (_config_json[key].is<bool>())
@@ -304,6 +356,7 @@ void ConfigHelper::setConfigOption(const char *key, bool value, bool write_to_nv
     }
 }
 
+// Set a float value in the configuration
 void ConfigHelper::setConfigOption(const char *key, float value, bool write_to_nvs)
 {
     if (_config_json[key].is<float>())

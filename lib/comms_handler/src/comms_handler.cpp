@@ -31,7 +31,7 @@ CommsHandler::CommsHandler()
 
     // Start the tasks
     // TODO: pin to core, lower stack size
-    // xTaskCreate(CommsHandlerWiFiTask, "CommsHandlerWiFiTask", 4096, this, 1, NULL);
+    xTaskCreate(CommsHandlerWiFiTask, "CommsHandlerWiFiTask", 4096, this, 1, NULL);
     xTaskCreate(CommsHandlerLTETask, "CommsHandlerLTETask", 4096, this, 1, NULL);
 
     xTaskCreate(CommsHandlerManagementTask, "CommsHandlerManagementTask", 4096, this, 1, NULL);
@@ -56,7 +56,7 @@ void CommsHandler::_load_current_config()
     _mqtt_clean_session = _config_helper->getConfigOption(MQTT_CLEAN_SESSION_KEY, true);
 
     _mqtt_lwt_topic = _config_helper->getConfigOption(MQTT_LWT_TOPIC_KEY, "");
-    _mqtt_lwt_payload = _config_helper -> getConfigOption(MQTT_LWT_PAYLOAD_KEY, "");
+    _mqtt_lwt_payload = _config_helper->getConfigOption(MQTT_LWT_PAYLOAD_KEY, "");
     _mqtt_lwt_qos = _config_helper->getConfigOption(MQTT_LWT_QOS_KEY, 0);
 
     _size_mqtt_msg_queue = _config_helper->getConfigOption(MQTT_QUEUE_SIZE_KEY, 1);
@@ -87,6 +87,11 @@ void CommsHandler::_load_current_config()
     _net_pref_switch_timeout = _config_helper->getConfigOption(NET_PRIORITY_SWITCH_TIME_KEY, 0);
 
     _lte_apn = _config_helper->getConfigOption(A76XX_APN_NAME_KEY, "mobitel");
+
+    _sta_ssid = _config_helper->getConfigOption(STATION_SSID_KEY, "");
+    _sta_pass = _config_helper->getConfigOption(STATION_PASS_KEY, "");
+
+    ESP_LOGI(TAG, "Loaded configuration");
 }
 
 // Self management task
@@ -105,7 +110,7 @@ void CommsHandler::CommsHandlerManagementTask(void *pvParameters)
             if (comms_handler->_net_preference == Comms_WiFi_Only ||
                 comms_handler->_net_preference == Comms_WiFi_over_LTE)
             {
-                comms_handler->_wifi_power_on();
+                //comms_handler->_wifi_power_on();
             }
             else if (comms_handler->_net_preference == Comms_LTE_Only ||
                      comms_handler->_net_preference == Comms_LTE_over_WiFi)
@@ -118,6 +123,7 @@ void CommsHandler::CommsHandlerManagementTask(void *pvParameters)
         if (comms_handler->_state == Comms_Unititialized)
         {
             // Long pause then fast blinks unintialized
+            ESP_LOGI(TAG, "Setting uninitialized LED pattern");
             comms_handler->setIndicatorLEDPattern(4, 1000, 100, 100, 100);
         }
         else if (comms_handler->_state == Comms_WiFi_Connected_Only ||
@@ -126,7 +132,8 @@ void CommsHandler::CommsHandlerManagementTask(void *pvParameters)
         {
             // WiFi Pattern
             // off short, on long
-            comms_handler->setIndicatorLEDPattern(2, 300, 1000);
+            ESP_LOGI(TAG, "Setting WiFi LED pattern");
+            comms_handler->setIndicatorLEDPattern(2, 300, 1200);
         }
         else if (comms_handler->_state == Comms_LTE_Connected_Only ||
                  comms_handler->_state == Comms_LTE_Connected_Primary ||
@@ -134,11 +141,13 @@ void CommsHandler::CommsHandlerManagementTask(void *pvParameters)
         {
             // LTE Pattern
             // Off long, on short
-            comms_handler->setIndicatorLEDPattern(2, 1000, 300);
+            ESP_LOGI(TAG, "Setting LTE LED pattern");
+            comms_handler->setIndicatorLEDPattern(2, 1200, 300);
         }
         else if (comms_handler->_state == Comms_Disconnected)
         {
             // fast blinks for disconnected
+            ESP_LOGI(TAG, "Setting disconnected LED pattern");
             comms_handler->setIndicatorLEDPattern(2, 300, 300);
         }
 
@@ -162,7 +171,9 @@ void CommsHandler::CommsHandlerQueueTask(void *pvParameters)
     }
 }
 
-/* ----------------------------- A76XX FUNCTIONS ---------------------------- */
+/* -------------------------------------------------------------------------- */
+/*                             LTE MQTT FUNCTIONS                             */
+/* -------------------------------------------------------------------------- */
 
 /*
 Handle connection reconnection
@@ -173,58 +184,68 @@ void CommsHandler::CommsHandlerLTETask(void *pvParameters)
     CommsHandler *instance = (CommsHandler *)pvParameters;
     TickType_t last_switch_time = xTaskGetTickCount();
     bool selfpriority = (instance->_net_preference == Comms_LTE_Only || instance->_net_preference == Comms_LTE_over_WiFi);
+    bool selfenabled = (instance->_net_preference != Comms_WiFi_Only);
     A76XX *lte_client = instance->_lte_client;
-    A76XXMQTTClient *lte_mqtt_client = instance->_lte_mqtt_client;
     ESP_LOGI(TAG, "LTE Task Running");
     for (;;)
     {
-        if (selfpriority)
+        if (selfenabled)
         {
-            ESP_LOGI(TAG, "LTE identified as priority");
-            // Check if LTE is connected
-            if (instance->_state == Comms_Unititialized)
+            // Only run if enabled
+            if (selfpriority)
             {
-                // Initialize LTE
-                instance->_lte_power_on();
-
-                if (lte_client->init() == false)
+                ESP_LOGI(TAG, "LTE identified as priority");
+                // First time run
+                if (instance->_state == Comms_Unititialized)
                 {
-                    ESP_LOGE(TAG, "Failed to initialize LTE err: [%d]", lte_client->getLastError());
-                    // instance->_state = Comms_Disconnected;
+                    // Initialize LTE
+                    instance->_lte_power_on();
+
+                    if (lte_client->init() == false)
+                    {
+                        ESP_LOGE(TAG, "Failed to initialize LTE err: [%d]", lte_client->getLastError());
+                        // instance->_state = Comms_Disconnected;
+                    }
+                    else
+                    {
+                        lte_client->reset();
+                        if (lte_client->waitForRegistration() == false)
+                        {
+                            ESP_LOGE(TAG, "Failed to register to LTE network err: [%d]", lte_client->getLastError());
+                        }
+                        if (lte_client->GPRSConnect(instance->_lte_apn.c_str()) == false)
+                        {
+                            ESP_LOGE(TAG, "Failed to connect to LTE network err: [%d]", lte_client->getLastError());
+                        }
+
+                        if (instance->_lte_mqtt_init() == false)
+                        {
+                            ESP_LOGE(TAG, "Failed to initialize MQTT client err: [%d]", instance->_lte_mqtt_client->getLastError());
+                        }
+
+                        ESP_LOGI(TAG, "Successfully initialized LTE and MQTT client");
+                        instance->_state = Comms_LTE_Connected_Only;
+                    }
+
+                    // initialize the mqtt client
+                    // TODO: handle using SSL
                 }
-                else
+                else if (instance->_state == Comms_LTE_Connected_Only ||
+                         instance->_state == Comms_LTE_Connected_Primary ||
+                         instance->_state == Comms_LTE_Connected_Secondary)
                 {
-                    lte_client->reset();
-                    if (lte_client->waitForRegistration() == false)
-                    {
-                        ESP_LOGE(TAG, "Failed to register to LTE network err: [%d]", lte_client->getLastError());
-                    }
-                    if (lte_client->GPRSConnect(instance->_lte_apn.c_str()) == false)
-                    {
-                        ESP_LOGE(TAG, "Failed to connect to LTE network err: [%d]", lte_client->getLastError());
-                    }
-
-                    while (instance->_lte_mqtt_init() == false)
-                    {
-                        ESP_LOGE(TAG, "Failed to initialize MQTT client err: [%d]", instance->_lte_mqtt_client->getLastError());
-                        vTaskDelay(pdMS_TO_TICKS(3000));
-                    }
-
-                    ESP_LOGI(TAG, "Successfully initialized LTE and MQTT client");
-                    instance->_state = Comms_LTE_Connected_Only;
+                    ESP_LOGI(TAG, "LTE Stuff");
                 }
-
-                // initialize the mqtt client
-                // TODO: handle using SSL
             }
-            else if (instance->_state == Comms_LTE_Connected_Only ||
-                     instance->_state == Comms_LTE_Connected_Primary ||
-                     instance->_state == Comms_LTE_Connected_Secondary)
-            {
-                ESP_LOGI(TAG, "LTE Stuff");
-            }
+            vTaskDelay(pdMS_TO_TICKS(5000));
         }
-        vTaskDelay(pdMS_TO_TICKS(5000));
+        else
+        {
+            // If not enabled, just wait
+            // Can handle changing config without restarting
+            ESP_LOGI(TAG, "LTE not enabled");
+            vTaskDelay(pdMS_TO_TICKS(5000));
+        }
     }
 }
 
@@ -236,7 +257,7 @@ void CommsHandler::_lte_power_on()
     digitalWrite(A76XX_PWR_PIN, HIGH);
     delay(600);
     digitalWrite(A76XX_PWR_PIN, LOW);
-    delay(2500);
+    delay(1500);
 }
 
 void CommsHandler::_lte_power_off()
@@ -268,87 +289,109 @@ bool CommsHandler::_lte_mqtt_init()
     }
 
     // Connect to the server
+    // String reformatting (not needed)
     String _mqtt_server_tcp = "" + _mqtt_server;
-    if (_mqtt_username.length() == 0 || _mqtt_password.length() == 0)
+    bool ret = false;
+    int conn_attempts = 0;
+    while (true)
     {
-        if (_mqtt_lwt_topic.length() == 0)
+        if (_mqtt_username.length() == 0 || _mqtt_password.length() == 0)
         {
-            ESP_LOGI(TAG, "Connecting to MQTT Server,\n\tURL: [%s]\n\tPort: [%d]\n\tClean: [%s]\n\tKeepAlive: [%d]\n\tUsername[%s]\n\tPassword[%s]\n\tLWT Topic[%s]\n\tLWT Payload[%s]\n\tLWTQOS:[%d]",
-                     _mqtt_server_tcp.c_str(),
-                     _mqtt_port,
-                     _mqtt_clean_session ? "true" : "false",
-                     _mqtt_keepalive,
-                     "NONE", "NONE", "NONE", "NONE", -1);
+            if (_mqtt_lwt_topic.length() == 0)
+            {
+                ESP_LOGI(TAG, "Connecting to MQTT Server,\n\tURL: [%s]\n\tPort: [%d]\n\tClean: [%s]\n\tKeepAlive: [%d]\n\tUsername[%s]\n\tPassword[%s]\n\tLWT Topic[%s]\n\tLWT Payload[%s]\n\tLWTQOS:[%d]",
+                         _mqtt_server_tcp.c_str(),
+                         _mqtt_port,
+                         _mqtt_clean_session ? "true" : "false",
+                         _mqtt_keepalive,
+                         "NONE", "NONE", "NONE", "NONE", -1);
 
-            return _lte_mqtt_client->connect(_mqtt_server_tcp.c_str(),
-                                             _mqtt_port,
-                                             _mqtt_clean_session,
-                                             _mqtt_keepalive);
+                ret = _lte_mqtt_client->connect(_mqtt_server_tcp.c_str(),
+                                                _mqtt_port,
+                                                _mqtt_clean_session,
+                                                _mqtt_keepalive);
+            }
+            else
+            {
+                ESP_LOGI(TAG, "Connecting to MQTT Server,\nURL: [%s]\nPort: [%d]\nClean: [%s]\nKeepAlive: [%d]\nUsername[%s]\nPassword[%s]\nLWT Topic[%s]\nLWT Payload[%s]\nLWTQOS:[%d]",
+                         _mqtt_server_tcp.c_str(),
+                         _mqtt_port,
+                         _mqtt_clean_session ? "true" : "false",
+                         _mqtt_keepalive,
+                         "NONE", "NONE",
+                         _mqtt_lwt_topic.c_str(),
+                         _mqtt_lwt_payload.c_str(),
+                         _mqtt_lwt_qos);
+
+                ret = _lte_mqtt_client->connect(_mqtt_server_tcp.c_str(),
+                                                _mqtt_port,
+                                                _mqtt_clean_session,
+                                                _mqtt_keepalive,
+                                                NULL, NULL, // Empty user name and password
+                                                _mqtt_lwt_topic.c_str(),
+                                                _mqtt_lwt_payload.c_str(),
+                                                _mqtt_lwt_qos);
+            }
         }
         else
         {
-            ESP_LOGI(TAG, "Connecting to MQTT Server,\nURL: [%s]\nPort: [%d]\nClean: [%s]\nKeepAlive: [%d]\nUsername[%s]\nPassword[%s]\nLWT Topic[%s]\nLWT Payload[%s]\nLWTQOS:[%d]",
-                     _mqtt_server_tcp.c_str(),
-                     _mqtt_port,
-                     _mqtt_clean_session ? "true" : "false",
-                     _mqtt_keepalive,
-                     "NONE", "NONE",
-                     _mqtt_lwt_topic.c_str(),
-                     _mqtt_lwt_payload.c_str(),
-                     _mqtt_lwt_qos);
+            if (_mqtt_lwt_topic.length() == 0)
+            {
+                ESP_LOGI(TAG, "Connecting to MQTT Server,\nURL: [%s]\nPort: [%d]\nClean: [%s]\nKeepAlive: [%d]\nUsername[%s]\nPassword[%s]\nLWT Topic[%s]\nLWT Payload[%s]\nLWTQOS:[%d]",
+                         _mqtt_server_tcp.c_str(),
+                         _mqtt_port,
+                         _mqtt_clean_session ? "true" : "false",
+                         _mqtt_keepalive,
+                         _mqtt_username.c_str(),
+                         _mqtt_password.c_str(),
+                         "NONE", "NONE", -1);
 
-            return _lte_mqtt_client->connect(_mqtt_server_tcp.c_str(),
-                                             _mqtt_port,
-                                             _mqtt_clean_session,
-                                             _mqtt_keepalive,
-                                             NULL, NULL, // Empty user name and password
-                                             _mqtt_lwt_topic.c_str(),
-                                             _mqtt_lwt_payload.c_str(),
-                                             _mqtt_lwt_qos);
+                ret = _lte_mqtt_client->connect(_mqtt_server_tcp.c_str(),
+                                                _mqtt_port,
+                                                _mqtt_clean_session,
+                                                _mqtt_keepalive,
+                                                _mqtt_username.c_str(),
+                                                _mqtt_password.c_str());
+            }
+            else
+            {
+                ESP_LOGI(TAG, "Connecting to MQTT Server,\nURL: [%s]\nPort: [%d]\nClean: [%s]\nKeepAlive: [%d]\nUsername[%s]\nPassword[%s]\nLWT Topic[%s]\nLWT Payload[%s]\nLWTQOS:[%d]",
+                         _mqtt_server_tcp.c_str(),
+                         _mqtt_port,
+                         _mqtt_clean_session ? "true" : "false",
+                         _mqtt_keepalive,
+                         _mqtt_username.c_str(),
+                         _mqtt_password.c_str(),
+                         _mqtt_lwt_topic.c_str(),
+                         _mqtt_lwt_payload.c_str(),
+                         _mqtt_lwt_qos);
+
+                ret = _lte_mqtt_client->connect(_mqtt_server_tcp.c_str(),
+                                                _mqtt_port,
+                                                _mqtt_clean_session,
+                                                _mqtt_keepalive,
+                                                _mqtt_username.c_str(),
+                                                _mqtt_password.c_str(),
+                                                _mqtt_lwt_topic.c_str(),
+                                                _mqtt_lwt_payload.c_str(),
+                                                _mqtt_lwt_qos);
+            }
         }
-    }
-    else
-    {
-        if (_mqtt_lwt_topic.length() == 0)
-        {
-            ESP_LOGI(TAG, "Connecting to MQTT Server,\nURL: [%s]\nPort: [%d]\nClean: [%s]\nKeepAlive: [%d]\nUsername[%s]\nPassword[%s]\nLWT Topic[%s]\nLWT Payload[%s]\nLWTQOS:[%d]",
-                     _mqtt_server_tcp.c_str(),
-                     _mqtt_port,
-                     _mqtt_clean_session ? "true" : "false",
-                     _mqtt_keepalive,
-                     _mqtt_username.c_str(),
-                     _mqtt_password.c_str(),
-                     "NONE", "NONE", -1);
 
-            return _lte_mqtt_client->connect(_mqtt_server_tcp.c_str(),
-                                             _mqtt_port,
-                                             _mqtt_clean_session,
-                                             _mqtt_keepalive,
-                                             _mqtt_username.c_str(),
-                                             _mqtt_password.c_str());
+        if (ret)
+        {
+            ESP_LOGI(TAG, "Connected to MQTT server via LTE");
+            return true;
         }
         else
         {
-            ESP_LOGI(TAG, "Connecting to MQTT Server,\nURL: [%s]\nPort: [%d]\nClean: [%s]\nKeepAlive: [%d]\nUsername[%s]\nPassword[%s]\nLWT Topic[%s]\nLWT Payload[%s]\nLWTQOS:[%d]",
-                     _mqtt_server_tcp.c_str(),
-                     _mqtt_port,
-                     _mqtt_clean_session ? "true" : "false",
-                     _mqtt_keepalive,
-                     _mqtt_username.c_str(),
-                     _mqtt_password.c_str(),
-                     _mqtt_lwt_topic.c_str(),
-                     _mqtt_lwt_payload.c_str(),
-                     _mqtt_lwt_qos);
-
-            return _lte_mqtt_client->connect(_mqtt_server_tcp.c_str(),
-                                             _mqtt_port,
-                                             _mqtt_clean_session,
-                                             _mqtt_keepalive,
-                                             _mqtt_username.c_str(),
-                                             _mqtt_password.c_str(),
-                                             _mqtt_lwt_topic.c_str(),
-                                             _mqtt_lwt_payload.c_str(),
-                                             _mqtt_lwt_qos);
+            if (conn_attempts > 5)
+            {
+                ESP_LOGE(TAG, "Failed to connect to MQTT server via LTE");
+                return false;
+            }
+            ESP_LOGE(TAG, "Retrying connection to MQTT server via LTE Attempt [%d/5]", conn_attempts);
+            vTaskDelay(pdMS_TO_TICKS(1000));
         }
     }
 }
@@ -359,12 +402,153 @@ bool CommsHandler::_lte_mqtt_pub(String topic,
                                  bool retain,
                                  bool dup)
 {
-    return true;
+    return _lte_mqtt_client->publish(topic.c_str(), payload.c_str(), qos, PUB_TIMEOUT_S, retain, dup);
 }
 
-/* --------------------------- WIFI MQTT FUNCTIONS -------------------------- */
-void CommsHandler::_wifi_power_on()
+/* -------------------------------------------------------------------------- */
+/*                             WIFI MQTT FUNCTIONS                            */
+/* -------------------------------------------------------------------------- */
+
+void CommsHandler::CommsHandlerWiFiTask(void *pvParameters)
 {
+    CommsHandler *instance = (CommsHandler *)pvParameters;
+
+    CommsHandler_Net_Pref_t net_pref = instance->_net_preference;
+    bool selfpriority = (net_pref == Comms_WiFi_Only || net_pref == Comms_WiFi_over_LTE);
+    bool selfenabled = (net_pref != Comms_LTE_Only);
+    for (;;)
+    {
+        if (selfenabled)
+        {
+            if (selfpriority)
+            {
+                if (instance->_state == Comms_Unititialized)
+                {
+                    instance->_wifi_power_on();
+                    
+                    if (instance->_wifi_mqtt_init() == false)
+                    {
+                        ESP_LOGE(TAG, "Failed to initialize MQTT client via WiFi");
+                    }else{
+                        instance->_state = Comms_WiFi_Connected_Only;
+                    }   
+                }
+                else if (instance->_state == Comms_WiFi_Connected_Only ||
+                         instance->_state == Comms_WiFi_Connected_Primary ||
+                         instance->_state == Comms_WiFi_Connected_Secondary)
+                {
+                    ESP_LOGI(TAG, "WiFi Stuff");
+                }
+            }
+            vTaskDelay(pdMS_TO_TICKS(5000));
+        }
+        else
+        {
+            ESP_LOGI(TAG, "WiFi not enabled");
+            vTaskDelay(pdMS_TO_TICKS(5000));
+        }
+    }
+}
+
+bool CommsHandler::_wifi_power_on()
+{
+    if (WiFi.status() == WL_CONNECTED)
+    {
+        ESP_LOGI(TAG, "WiFi already connected");
+        return true;
+    }
+    else
+    {
+        ESP_LOGI(TAG, "WiFi not connected, connecting");
+        if (_sta_ssid.length() == 0 || _sta_pass.length() == 0)
+        {
+            ESP_LOGE(TAG, "Password or SSID is empty for WiFi");
+            return false;
+        }
+        else
+        {
+            WiFi.begin(_sta_ssid.c_str(), _sta_pass.c_str());
+            int attempts = 0;
+            while (WiFi.status() != WL_CONNECTED)
+            {
+                delay(1000);
+                ESP_LOGI(TAG, "Connecting to WiFi, attempt: [%d/5]", attempts);
+                attempts++;
+                if (attempts > 5)
+                {
+                    ESP_LOGE(TAG, "Failed to connect to WiFi");
+                    return false;
+                }
+            }
+            ESP_LOGI(TAG, "Connected to WiFi");
+            return true;
+        }
+    }
+}
+
+void CommsHandler::_wifi_power_off()
+{
+    WiFi.disconnect();
+}
+
+bool CommsHandler::_wifi_mqtt_init()
+{
+    ESP_LOGI(TAG, "Initializing MQTT client via WiFi");
+    if (WiFi.status() != WL_CONNECTED)
+    {
+        ESP_LOGE(TAG, "WiFi not connected");
+        return false;
+    }else{
+        ESP_LOGI(TAG, "WiFi connected");
+    }
+
+    // Initialize the mqtt client
+    if (_wifi_client == nullptr)
+        _wifi_client = new WiFiClient();
+
+    // Max size of packet is 1024 bytes
+    if (_wifi_mqtt_client == nullptr)
+        _wifi_mqtt_client = new MQTTClient(1024);
+
+    // Start the client
+    _wifi_mqtt_client->begin(_mqtt_server.c_str(), _mqtt_port, *_wifi_client);
+    ESP_LOGI(TAG, "Started MQTT client: \n Server: [%s]\n Port: [%d]", _mqtt_server.c_str(), _mqtt_port);
+    int conn_attempts = 0;
+    bool ret = false;
+    while (true)
+    {
+        if (_mqtt_username.length() == 0 || _mqtt_password.length() == 0)
+        {
+            ESP_LOGI(TAG, "Connecting to MQTT Server:\n Client ID: [%s]\n Username: [%s]\n Password: [%s]",
+                     _mqtt_client_id.c_str(),
+                     "NONE", "NONE");
+            ret = _wifi_mqtt_client->connect(_mqtt_client_id.c_str());
+        }
+        else
+        {
+            ESP_LOGI(TAG, "Connecting to MQTT Server:\n Client ID: [%s]\n Username: [%s]\n Password: [%s]",
+                     _mqtt_client_id.c_str(),
+                     _mqtt_username.c_str(),
+                     _mqtt_password.c_str());
+            ret = _wifi_mqtt_client->connect(_mqtt_client_id.c_str(), _mqtt_username.c_str(), _mqtt_password.c_str());
+        }
+        if (ret)
+        {
+            ESP_LOGI(TAG, "Connected to MQTT server via WiFi");
+            return true;
+        }
+        else
+        {
+            if (conn_attempts > 5)
+            {
+                ESP_LOGE(TAG, "Failed to connect to MQTT server via WiFi");
+                return false;
+            }
+            ESP_LOGE(TAG, "Retrying connection to MQTT server via WiFi Attempt [%d/5]", conn_attempts);
+            vTaskDelay(pdMS_TO_TICKS(1000));
+        }
+        conn_attempts++;
+    }
 }
 
 /* ------------------------------ INDICATOR LED ----------------------------- */
@@ -394,10 +578,8 @@ void CommsHandler::IndicatorLEDPatternTask(void *pvParameters)
     pinMode(LED_BUILTIN, OUTPUT);
     for (;;)
     {
-        if (xQueueReceive(comms_handler->_led_blink_pattern, &pattern, 0))
-        {
-            ESP_LOGI("CommsHandler", "Received LED pattern");
-        }
+        // Keep looping till a new pattern is received
+        xQueueReceive(comms_handler->_led_blink_pattern, &pattern, 0);
 
         for (int i = 0; i < pattern.num_blinks; i++)
         {

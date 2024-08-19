@@ -12,6 +12,14 @@ static const char *TAG = "ConfigWebpage";
 /*                        MAIN CONFIG WEBPAGE FUNCTIONS                       */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * @brief Construct a new Config Webpage:: Config Webpage object
+ * 
+ * @param config_helper optional argument to pass in a config helper object
+ * @param ota_helper optional argument to pass in an ota helper object
+ * 
+ *  If either or both are not passed, new ones will be created
+ */
 ConfigWebpage::ConfigWebpage(ConfigHelper *config_helper, OTAHelper *ota_helper)
 {
     _server = new AsyncWebServer(80);
@@ -122,6 +130,7 @@ ConfigWebpage::ConfigWebpage(ConfigHelper *config_helper, OTAHelper *ota_helper)
     _server->on(UPDATE_OTA_STATUS_ENDPOINT, [this](AsyncWebServerRequest *request)
                 { this->handleUpdateOTAStatus(request); });
 
+    // TODO: remove links when killing server
     // TODO: Updating via file upload
 
     // Begin the server
@@ -130,8 +139,14 @@ ConfigWebpage::ConfigWebpage(ConfigHelper *config_helper, OTAHelper *ota_helper)
     ESP_LOGI(TAG, "Started the webserver");
 }
 
+/**
+ * @brief TaskManager task to handle DNS requests
+ * 
+ * @param pvParameters 
+ */
 void ConfigWebpage::ConfigServerTask(void *pvParameters)
 {
+    // TODO: kill when done
     ConfigWebpage *instance = (ConfigWebpage *)pvParameters;
     for (;;)
     {
@@ -149,6 +164,12 @@ void ConfigWebpage::ConfigServeRootPage(AsyncWebServerRequest *request)
 }
 
 /* -------------------------- CONFIG META FUNCTIONS ------------------------- */
+
+/**
+ * @brief Sends the current configuration JSON as a string to the webpage
+ * 
+ * @param request 
+ */
 void ConfigWebpage::handleSendCurrentConfigJSON(AsyncWebServerRequest *request)
 {
 
@@ -159,11 +180,21 @@ void ConfigWebpage::handleSendCurrentConfigJSON(AsyncWebServerRequest *request)
     request->send(response);
 }
 
+/**
+ * @brief Receives a new JSON config as a string for bulk assignment
+ * 
+ * @param request 
+ */
 void ConfigWebpage::handleReceiveConfigJSON(AsyncWebServerRequest *request)
 {
     // TODO: Receive JSON and save to NVS to make rapid config possible
 }
 
+/**
+ * @brief Sends the current status of the device as a JSON string
+ * 
+ * @param request 
+ */
 void ConfigWebpage::handleSendStatusJSON(AsyncWebServerRequest *request)
 {
 
@@ -229,6 +260,11 @@ void ConfigWebpage::handleSendStatusJSON(AsyncWebServerRequest *request)
 /*                              SETTINGS FUNCTION                             */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * @brief Handles factory reset, by calling the appropriate config helper functions
+ * 
+ * @param request 
+ */
 void ConfigWebpage::handleFactoryReset(AsyncWebServerRequest *request)
 {
     ESP_LOGI("ConfigHandler", "Factory reset requested from webpage");
@@ -244,6 +280,11 @@ void ConfigWebpage::handleFactoryReset(AsyncWebServerRequest *request)
     ESP_LOGI(TAG, "Factory reset done from webpage");
 }
 
+/**
+ * @brief Restarts device, may result in client disconnection
+ * 
+ * @param request 
+ */
 void ConfigWebpage::handleDeviceRestart(AsyncWebServerRequest *request)
 {
     ESP_LOGI("ConfigHandler", "Restart requested from webpage");
@@ -261,8 +302,12 @@ void ConfigWebpage::handleDeviceRestart(AsyncWebServerRequest *request)
 /* -------------------------------------------------------------------------- */
 /*                               INTERNET ACCESS                              */
 /* -------------------------------------------------------------------------- */
-
 /* -------------------------- INTERNET PREFERENCES -------------------------- */
+/**
+ * @brief Receive, validate and save internet preferences
+ * 
+ * @param request 
+ */
 void ConfigWebpage::handleReceiveInternetPreferences(AsyncWebServerRequest *request)
 {
     int params = request->params();
@@ -276,6 +321,7 @@ void ConfigWebpage::handleReceiveInternetPreferences(AsyncWebServerRequest *requ
         {
             _config_helper->setConfigOption(NET_PRIORITY_PREF_KEY, p->value().c_str());
         }
+        // TODO: switch time parameter
     }
 
     JsonDocument responsedoc;
@@ -294,6 +340,12 @@ void ConfigWebpage::handleReceiveInternetPreferences(AsyncWebServerRequest *requ
 }
 
 /* ------------------------------ LTE FUNCTIONS ----------------------------- */
+
+/**
+ * @brief Receive validate and set LTE settings
+ * 
+ * @param request 
+ */
 void ConfigWebpage::handleLTESetConfig(AsyncWebServerRequest *request)
 {
     int params = request->params();
@@ -349,6 +401,11 @@ void ConfigWebpage::handleLTESetConfig(AsyncWebServerRequest *request)
 }
 
 /* ---------------------------- STATION FUNCTIONS --------------------------- */
+/**
+ * @brief Start scanning for WiFi networks asynchronously when called
+ * 
+ * @param request 
+ */
 void ConfigWebpage::handleStationStartScan(AsyncWebServerRequest *request)
 {
     ESP_LOGI(TAG, "Scanning for WiFi networks...");
@@ -363,6 +420,14 @@ void ConfigWebpage::handleStationStartScan(AsyncWebServerRequest *request)
     request->send(response);
 }
 
+/**
+ * @brief Sends back the num_networks found and the networks in a JSON array
+ * 
+ * The page JS will disregard if there is only one element (i.e. no networks to show)
+ * Will keep being called till there are networks found
+ * 
+ * @param request 
+ */
 void ConfigWebpage::handleStationScanResults(AsyncWebServerRequest *request)
 {
     // Get the number of networks found
@@ -396,6 +461,12 @@ void ConfigWebpage::handleStationScanResults(AsyncWebServerRequest *request)
     request->send(response);
 }
 
+/**
+ * @brief Set the station configuration and attempt to connect
+ * 
+ * 
+ * @param request 
+ */
 void ConfigWebpage::handleStationSetConfig(AsyncWebServerRequest *request)
 {
     _sta_attempts = 0;
@@ -470,6 +541,15 @@ void ConfigWebpage::handleStationSetConfig(AsyncWebServerRequest *request)
     request->send(response);
 }
 
+/**
+ * @brief Attempt to connect to the WiFi network
+ * 
+ * Sends updates for number of attempts while trying. Failure message and success message
+ * 
+ * Saves SSID and Password if successful only
+ * 
+ * @param request 
+ */
 void ConfigWebpage::handleStationSendUpdate(AsyncWebServerRequest *request)
 {
     if (_sta_ssid.length() == 0 || _sta_pass.length() == 0)
@@ -532,6 +612,16 @@ void ConfigWebpage::handleStationSendUpdate(AsyncWebServerRequest *request)
 /*                            MQTT CONFIG FUNCTION                            */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * @brief Receive and validate the data from the MQTT form
+ * 
+ * There is some fuckery going on to deal with booleans nicely
+ * 
+ * Options will only be saved if there are 0 errors logged
+ * Can still result in empty options
+ * 
+ * @param request 
+ */
 void ConfigWebpage::handleMQTTSetConfig(AsyncWebServerRequest *request)
 {
     int params = request->params();
@@ -771,6 +861,14 @@ void ConfigWebpage::handleMQTTSetConfig(AsyncWebServerRequest *request)
 /* -------------------------------------------------------------------------- */
 /*                        ACCESS POINT CONFIG FUNCTION                        */
 /* -------------------------------------------------------------------------- */
+
+/**
+ * @brief Receive, validate and save the access point settings
+ * 
+ * Formats the SSID with the UID if the pattern is found
+ * 
+ * @param request 
+ */
 void ConfigWebpage::handleAccessPointSetConfig(AsyncWebServerRequest *request)
 {
     int params = request->params();
@@ -858,6 +956,13 @@ void ConfigWebpage::handleAccessPointSetConfig(AsyncWebServerRequest *request)
 /*                                OTA FUNCTIONS                               */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * @brief Sends the current status of the OTA update
+ * 
+ * Formats a string to have percentage and size of update
+ * 
+ * @param request 
+ */
 void ConfigWebpage::handleUpdateOTAStatus(AsyncWebServerRequest *request)
 {
     JsonDocument responsedoc;
@@ -880,10 +985,20 @@ void ConfigWebpage::handleUpdateOTAStatus(AsyncWebServerRequest *request)
     request->send(response);
 }
 
+/**
+ * @brief Handle receiving a file upload for OTA update
+ * 
+ * @param request 
+ */
 void ConfigWebpage::handleUpdateOTAFileUpload(AsyncWebServerRequest *request)
 {
 }
 
+/**
+ * @brief Immediately check the URL for an OTA update
+ * 
+ * @param request 
+ */
 void ConfigWebpage::handleUpdateOTANowRequest(AsyncWebServerRequest *request)
 {
     int params = request->params();

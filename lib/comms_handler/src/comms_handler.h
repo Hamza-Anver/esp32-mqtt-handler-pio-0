@@ -29,6 +29,7 @@
 #define LTE_PUBLISH_TIMEOUT_S 30
 
 #define COMMS_INDICATOR_LED LED_BUILTIN
+#define PUB_TIMEOUT_S 5
 
 /* -------------------------------- CLASS DEFINITION -------------------------------- */
 
@@ -124,9 +125,9 @@ private:
 
     void _lte_get_state();
 
-    void _wifi_power_on();
-    void _wifi_mqtt_init();
-    void _wifi_mqtt_pub();
+    bool _wifi_power_on();
+    bool _wifi_mqtt_init();
+    bool _wifi_mqtt_pub(String topic, String payload, int qos, bool retain, bool dup);
     void _wifi_mqtt_sub();
     void _wifi_power_off();
 
@@ -162,6 +163,9 @@ private:
     int _size_mqtt_msg_queue;
 
     String _lte_apn;
+
+    String _sta_ssid;
+    String _sta_pass;
 
     // Clients
     A76XX *_lte_client = nullptr;
