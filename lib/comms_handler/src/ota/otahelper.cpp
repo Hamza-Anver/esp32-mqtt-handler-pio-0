@@ -196,6 +196,7 @@ bool OTAHelper::CheckJSONForNewVersion(bool str_msg)
             }
         }
     }
+    
     return false;
 }
 
