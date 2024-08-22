@@ -13,11 +13,10 @@ CommsHandler::CommsHandler()
     _state = Comms_Unititialized;
     _error = Comms_No_Error;
 
-    // Instantiate sub components
+    // Instantiate config helper
+    // TODO: handle resets if necessary
+    // e.g. one time reset for new OTA update configs
     _config_helper = new ConfigHelper(false);
-    _ota_helper = new OTAHelper(_config_helper);
-    // TODO: address the station and wifi initialization
-    _config_webpage = new ConfigWebpage(_config_helper, _ota_helper);
 
     // Load current configuration
     _load_current_config();
@@ -31,8 +30,8 @@ CommsHandler::CommsHandler()
 
     // Start the tasks
     // TODO: pin to core, lower stack size
-    xTaskCreate(CommsHandlerWiFiTask, "CommsHandlerWiFiTask", 4096, this, 1, NULL);
-    xTaskCreate(CommsHandlerLTETask, "CommsHandlerLTETask", 4096, this, 1, NULL);
+    //xTaskCreate(CommsHandlerWiFiTask, "CommsHandlerWiFiTask", 4096, this, 1, NULL);
+    //xTaskCreate(CommsHandlerLTETask, "CommsHandlerLTETask", 4096, this, 1, NULL);
 
     xTaskCreate(CommsHandlerManagementTask, "CommsHandlerManagementTask", 4096, this, 1, NULL);
     // xTaskCreate(CommsHandlerQueueTask, "CommsHandlerQueueTask", 4096, this, 1, NULL);
@@ -40,6 +39,12 @@ CommsHandler::CommsHandler()
     // Start the LED pattern task
     xTaskCreate(IndicatorLEDPatternTask, "IndicatorLEDPatternTask", 4096, this, 1, NULL);
     setIndicatorLEDPattern(3, 1000, 1000, 1000);
+
+    // Instantiate sub modules
+
+    _ota_helper = new OTAHelper(_lte_client);
+    // TODO: address the station and wifi initialization
+    //_config_webpage = new ConfigWebpage(_config_helper, _ota_helper);
 }
 
 void CommsHandler::_load_current_config()

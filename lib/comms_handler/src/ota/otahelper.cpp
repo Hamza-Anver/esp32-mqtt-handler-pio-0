@@ -10,17 +10,54 @@ static const char *TAG = "OTAHelper";
 // TODO: Filesystem updates
 // TODO: JSON checking
 
-OTAHelper::OTAHelper(ConfigHelper *config_helper)
+OTAHelper::OTAHelper(A76XX *a76xx)
 {
-    if (config_helper == nullptr)
+    _a76xx = a76xx;
+}
+
+bool OTAHelper::CheckUpdateJSON(String server, OTAHelper::OTAMethod_t method)
+{
+    if (method == OTA_WIFI)
     {
-        _config_helper = new ConfigHelper(false);
-    }
-    else
-    {
-        _config_helper = config_helper;
+        if(WiFi.status() != WL_CONNECTED)
+        {
+            ESP_LOGE(TAG, "No WiFi connection. Checking JSON aborted");
+            return false;
+        }
+        _wifi_http = new HTTPClient();
+        _wifi_http->begin(server);
+        int httpCode = _wifi_http->GET();
+        if (httpCode == HTTP_CODE_OK)
+        {
+            String payload = _wifi_http->getString();
+            ESP_LOGI(TAG, "JSON received: %s", payload.c_str());
+            if(deserializeJson(_update_meta_json, payload) == DeserializationError::Ok)
+            {
+                _server_json_url = server;
+                return true;
+            }
+            else
+            {
+                ESP_LOGE(TAG, "JSON parsing failed");
+                return false;
+            }
+        }
+        else
+        {
+            ESP_LOGE(TAG, "HTTP error: %d", httpCode);
+            _wifi_http->end();
+            return false;
+        }
+        _wifi_http->end();
+        return true;
+
+    }else if(method == OTA_LTE){
+        ESP_LOGE(TAG, "LTE OTA not implemented yet");
+        return false;
     }
 }
+
+
 
 void OTAHelper::CallOTAInternetUpdateAsync(String updateURL)
 {

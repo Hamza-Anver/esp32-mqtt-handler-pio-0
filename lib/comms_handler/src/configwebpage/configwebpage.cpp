@@ -37,8 +37,8 @@ ConfigWebpage::ConfigWebpage(ConfigHelper *config_helper, OTAHelper *ota_helper)
     }
 
     if (ota_helper == nullptr)
-    {
-        _ota_helper = new OTAHelper(_config_helper);
+    {// TODO: fix this assignment
+        _ota_helper = nullptr;
     }
     else
     {
