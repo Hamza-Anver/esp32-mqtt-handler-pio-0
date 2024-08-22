@@ -1,8 +1,8 @@
 {
-    "name": "v1.0.27",
+    "name": "v1.0.28",
     "major": "1",
     "minor": "0",
-    "patch": "27",
+    "patch": "28",
     "env": "nb-iot-nodemcu-32s-4mb",
-    "binurl": "https://github.com/Hamza-Anver/esp32-mqtt-handler-pio-0/nb-iot-nodemcu-32s-4mb/nb-iot-nodemcu-32s-4mb.bin"
+    "binurl": "https://github.com/Hamza-Anver/esp32-mqtt-handler-pio-0/binfiles/nb-iot-nodemcu-32s-4mb/nb-iot-nodemcu-32s-4mb.bin"
 }

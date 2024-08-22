@@ -42,7 +42,7 @@ def after_build(source, target, env):
 
     copy_bin_to_loc(binpath, os.path.join(newbin_dir,dest_name)) # type: ignore
 
-    binurl = "https://github.com/Hamza-Anver/esp32-mqtt-handler-pio-0/" + version_defs["VERSION_ENVIRONMENT"] + '/' + dest_name
+    binurl = "https://github.com/Hamza-Anver/esp32-mqtt-handler-pio-0/" + "binfiles/" + version_defs["VERSION_ENVIRONMENT"] + '/' + dest_name
 
     jsondata = {
         "name": version_defs["VERSION_STRING"],
