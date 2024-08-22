@@ -167,6 +167,9 @@ private:
     String _sta_ssid;
     String _sta_pass;
 
+    String _ota_json_url;
+    int _ota_freq_mins;
+
     // Clients
     A76XX *_lte_client = nullptr;
     A76XXMQTTClient *_lte_mqtt_client = nullptr;

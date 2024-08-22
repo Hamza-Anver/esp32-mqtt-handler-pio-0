@@ -30,6 +30,7 @@ void loop()
     while (true)
     {
         delay(1000);
+        // TODO: restart if heap gets too low for too long
         ESP_LOGI("Main", "Free heap size: [%d], Max Free Heap Alloc: [%d]", ESP.getFreeHeap(), ESP.getMaxAllocHeap());
 
     }

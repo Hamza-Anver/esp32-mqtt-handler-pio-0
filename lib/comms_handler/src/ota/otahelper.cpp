@@ -4,6 +4,8 @@
 #include <esp_log.h>
 #include <Update.h>
 
+#include <version.h>
+
 static const char *TAG = "OTAHelper";
 
 // TODO: Work with bin uploads
@@ -13,12 +15,15 @@ static const char *TAG = "OTAHelper";
 OTAHelper::OTAHelper(A76XX *a76xx)
 {
     _a76xx = a76xx;
+    _update_msg.reserve(512);
+    _error_msg.reserve(512);
 }
 
 bool OTAHelper::CheckOTAHasMessage()
 {
     return (_update_msg != "" ||
-            _error_msg != "");
+            _error_msg != "" ||
+            Update.isRunning());
 }
 
 /**
@@ -33,16 +38,56 @@ bool OTAHelper::GetOTAMessage(String &message)
     if (_update_msg != "")
     {
         message = _update_msg;
+        ESP_LOGI(TAG, "Message: %s", message.c_str());
         _update_msg = "";
         return true;
     }
-    else if (_error_msg != "")
+    if (_error_msg != "")
     {
         message = _error_msg;
+        ESP_LOGI(TAG, "Error: %s", message.c_str());
         _error_msg = "";
         return false;
     }
+    if (Update.isRunning())
+    {
+        message = "Downloading [" + _update_url + "] " + String(Update.progress() * 100 / Update.size()) + " % [" + String(Update.progress()) + "/" + String(Update.size()) + "] bytes";
+        ESP_LOGI(TAG, "Message: %s", message.c_str());
+        return true;
+    }
     return false;
+}
+
+void OTAHelper::ClearOTAMessageStrings()
+{
+    _error_msg = "";
+    _update_msg = "";
+}
+
+void OTAHelper::AddToUpdateString(String update_msg)
+{
+    if (_update_msg.length() + update_msg.length() > 500)
+    {
+        _update_msg.clear();
+        _update_msg = update_msg;
+    }
+    else
+    {
+        _update_msg += update_msg;
+    }
+}
+
+void OTAHelper::AddToErrorString(String error_msg)
+{
+    if (_error_msg.length() + error_msg.length() > 500)
+    {
+        _error_msg.clear();
+        _error_msg = error_msg;
+    }
+    else
+    {
+        _error_msg += error_msg;
+    }
 }
 
 bool OTAHelper::CheckUpdateJSON(String jsonurl, OTAHelper::OTAMethod_t method)
@@ -72,13 +117,16 @@ bool OTAHelper::CheckUpdateJSON(String jsonurl, OTAHelper::OTAMethod_t method)
                 if (deserializeJson(_update_meta_json, payload) == DeserializationError::Ok)
                 {
                     serializeJsonPretty(_update_meta_json, payload);
+                    payload.replace("\n", "<br>");
                     _update_msg += "Received JSON: <br>" + payload;
+                    _wifi_http->end();
                     return true;
                 }
                 else
                 {
                     _error_msg = "JSON parsing from " + jsonurl + " failed!";
                     ESP_LOGE(TAG, "JSON parsing failed");
+                    _wifi_http->end();
                     return false;
                 }
             }
@@ -91,8 +139,11 @@ bool OTAHelper::CheckUpdateJSON(String jsonurl, OTAHelper::OTAMethod_t method)
             }
             _wifi_http->end();
             return true;
-        }else{
+        }
+        else
+        {
             _error_msg += "Failed to start the WiFi HTTP Client with URL: [" + jsonurl + "]";
+            _wifi_http->end();
             return false;
         }
     }
@@ -105,7 +156,56 @@ bool OTAHelper::CheckUpdateJSON(String jsonurl, OTAHelper::OTAMethod_t method)
     return false;
 }
 
-void OTAHelper::handleOTAChunks(String filename, size_t index, uint8_t *data, size_t len, bool final, size_t reqlen)
+bool OTAHelper::CheckJSONForNewVersion(bool str_msg)
+{
+    if (_update_meta_json.isNull() == false)
+    {
+        // There is a JSON file with data
+        // TODO: establish some logic here
+        if (_update_meta_json.containsKey("major") &&
+            _update_meta_json.containsKey("minor") &&
+            _update_meta_json.containsKey("patch") &&
+            _update_meta_json.containsKey("binurl") &&
+            _update_meta_json.containsKey("env"))
+        {
+            if (strcmp(VERSION_ENVIRONMENT, _update_meta_json["env"].as<String>().c_str()) == 0)
+            {
+                // Environment matches
+                int new_major = _update_meta_json["major"];
+                int new_minor = _update_meta_json["minor"];
+                int new_patch = _update_meta_json["patch"];
+                if (new_major > VERSION_MAJOR ||
+                    new_minor > VERSION_MINOR ||
+                    new_patch > VERSION_PATCH)
+                {
+                    // Version is newer
+                    _update_url = _update_meta_json["binurl"].as<String>();
+                    _update_msg = "New Version " + _update_meta_json["name"].as<String>() + " found!";
+                    _update_msg += "<br> Downloading bin from: " + _update_url;
+                    ESP_LOGI(TAG, "New firmware [%s] bin at: %s",
+                             _update_meta_json["name"].as<String>().c_str(),
+                             _update_url.c_str());
+                    return true;
+                }
+                else
+                {
+                    _error_msg = "New version was not found from JSON file";
+                    ESP_LOGE(TAG, "No new firmware found");
+                    return false;
+                }
+            }
+        }
+    }
+    return false;
+}
+
+void OTAHelper::handleOTAChunks(String filename,
+                                size_t index,
+                                uint8_t *data,
+                                size_t len,
+                                bool final,
+                                size_t reqlen,
+                                bool str_msg)
 {
     if (!Update.isRunning())
     {
@@ -152,24 +252,38 @@ void OTAHelper::handleOTAChunks(String filename, size_t index, uint8_t *data, si
     return;
 }
 
-void OTAHelper::CallOTAInternetUpdateAsync(String updateURL)
+void OTAHelper::CallOTAInternetUpdateAsync(String updateURL,
+                                           bool autorestart,
+                                           bool str_msg)
 {
     // TODO: Make this work with A76XX HTTP too
     // using a76xx http may be hard
     // Can use the MQTT stream to write chunks instead
-    _update_url = updateURL;
-    _error_msg = "";
-    if (WiFi.status() != WL_CONNECTED)
+    if (updateURL != "")
     {
-        ESP_LOGE(TAG, "No WiFi connection. OTA update aborted.");
-        _error_msg = "No WiFi connection";
+        _update_url = updateURL;
+    }
+
+    _auto_restart = autorestart;
+
+    // 4 is an arbitray number
+    if (_update_url.length() < 4)
+    {
+        _error_msg += "Bin file URL is invalid [" + _update_url + "]";
     }
     else
     {
-        ESP_LOGI(TAG, "Starting asynchronous OTA update");
-        xTaskCreate(UpdateOTAInternetURL, "UpdateOTAInternetURL", 8192, this, 1, NULL);
+        if (WiFi.status() != WL_CONNECTED)
+        {
+            ESP_LOGE(TAG, "No WiFi connection. OTA update aborted.");
+            _error_msg += "No WiFi connection";
+        }
+        else
+        {
+            ESP_LOGI(TAG, "Starting asynchronous OTA update");
+            xTaskCreate(UpdateOTAInternetURL, "UpdateOTAInternetURL", 8192, this, 1, NULL);
+        }
     }
-    return void();
 }
 
 void OTAHelper::UpdateOTAInternetURL(void *pvParameters)
@@ -219,7 +333,10 @@ void OTAHelper::UpdateOTAInternetURL(void *pvParameters)
                 {
                     instance->_update_msg += "<br>Update successfully completed. Reboot to apply changes.";
                     ESP_LOGI(TAG, "Update successfully completed. Reboot to apply changes.");
-                    instance->_update_success = true;
+                    if (instance->_auto_restart)
+                    {
+                        ESP.restart();
+                    }
                 }
                 else
                 {
@@ -236,6 +353,7 @@ void OTAHelper::UpdateOTAInternetURL(void *pvParameters)
         }
         else
         {
+            instance->_error_msg = "OTA update failed. Insufficient heap.";
             ESP_LOGE(TAG, "Not enough space to begin OTA update");
         }
     }

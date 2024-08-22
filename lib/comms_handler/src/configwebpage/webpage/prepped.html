@@ -1084,7 +1084,7 @@
             <summary>Other update options</summary>
             <form action="/binurlotanow">
                 <label for="otabinurl">Immediate update from URL</label>
-                <input id="otabinurl" type="text" name="{{OTA_URL_KEY}}" value=""
+                <input id="otabinurl" type="text" name="otabinurl" value=""
                     placeholder="https://github.com/eg.bin" />
                 <button type="submit" class="btn-subtle">Update firmware from URL</button>
             </form>
@@ -1117,8 +1117,8 @@
 
     <footer>
         Built for: nb-iot-nodemcu-32s-4mb <br>
-        Version: v1.0.29 Date: 2024-08-22 Time: 23:09:31 Git: main_5cef200 <br>
-        Bin File Name: nb-iot-nodemcu-32s-4mb-v1.0.29-20240822-230931-main-5cef200.bin
+        Version: v1.0.30 Date: 2024-08-23 Time: 01:20:50 Git: main_c687ce3 <br>
+        Bin File Name: nb-iot-nodemcu-32s-4mb-v1.0.30-20240823-012050-main-c687ce3.bin
     </footer>
     <script>
         // Generic form send data
@@ -1184,6 +1184,10 @@
                 }
             }, false);
 
+            source.addEventListener('message', function (e) {
+                console.log('message', e.data);
+            }, false);
+
             source.addEventListener('update', function (e) {
                 console.log('update', e.data);
                 updateDialogHelper(e.data, "update");
@@ -1221,7 +1225,7 @@
             endpoint = "",
             cancelbutton = "Cancel") {
             if (endpoint != "") {
-                confirmdialogform.setAttribute('action', "fieldSetSendData(event,'confirmdialogform','" + endpoint + "')");
+                confirmdialogform.setAttribute('action', endpoint);
             }
 
             confirmdialogmsg.innerHTML = message;

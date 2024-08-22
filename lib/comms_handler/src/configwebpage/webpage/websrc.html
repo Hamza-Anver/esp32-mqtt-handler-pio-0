@@ -1084,7 +1084,7 @@
             <summary>Other update options</summary>
             <form action="{{UPDATE_OTA_BIN_URL_ENDPOINT}}">
                 <label for="{{OTA_BIN_URL_KEY}}">Immediate update from URL</label>
-                <input id="{{OTA_BIN_URL_KEY}}" type="text" name="{{OTA_URL_KEY}}" value=""
+                <input id="{{OTA_BIN_URL_KEY}}" type="text" name="{{OTA_BIN_URL_KEY}}" value=""
                     placeholder="https://github.com/eg.bin" />
                 <button type="submit" class="btn-subtle">Update firmware from URL</button>
             </form>
@@ -1184,6 +1184,10 @@
                 }
             }, false);
 
+            source.addEventListener('message', function (e) {
+                console.log('message', e.data);
+            }, false);
+
             source.addEventListener('update', function (e) {
                 console.log('update', e.data);
                 updateDialogHelper(e.data, "update");
@@ -1221,7 +1225,7 @@
             endpoint = "",
             cancelbutton = "Cancel") {
             if (endpoint != "") {
-                confirmdialogform.setAttribute('action', "fieldSetSendData(event,'confirmdialogform','" + endpoint + "')");
+                confirmdialogform.setAttribute('action', endpoint);
             }
 
             confirmdialogmsg.innerHTML = message;

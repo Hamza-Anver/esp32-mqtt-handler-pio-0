@@ -30,10 +30,10 @@ CommsHandler::CommsHandler()
 
     // Start the tasks
     // TODO: pin to core, lower stack size
-    //xTaskCreate(CommsHandlerWiFiTask, "CommsHandlerWiFiTask", 4096, this, 1, NULL);
-    //xTaskCreate(CommsHandlerLTETask, "CommsHandlerLTETask", 4096, this, 1, NULL);
+    // xTaskCreate(CommsHandlerWiFiTask, "CommsHandlerWiFiTask", 4096, this, 1, NULL);
+    // xTaskCreate(CommsHandlerLTETask, "CommsHandlerLTETask", 4096, this, 1, NULL);
 
-    xTaskCreate(CommsHandlerManagementTask, "CommsHandlerManagementTask", 4096, this, 1, NULL);
+    xTaskCreate(CommsHandlerManagementTask, "CommsHandlerManagementTask", 12288, this, 1, NULL);
     // xTaskCreate(CommsHandlerQueueTask, "CommsHandlerQueueTask", 4096, this, 1, NULL);
 
     // Start the LED pattern task
@@ -96,64 +96,109 @@ void CommsHandler::_load_current_config()
     _sta_ssid = _config_helper->getConfigOption(STATION_SSID_KEY, "");
     _sta_pass = _config_helper->getConfigOption(STATION_PASS_KEY, "");
 
+    _ota_json_url = _config_helper->getConfigOption(OTA_JSON_URL_KEY, "");
+    _ota_freq_mins = _config_helper->getConfigOption(OTA_UPDATE_FREQUENCY_KEY, 1);
+
     ESP_LOGI(TAG, "Loaded configuration");
 }
 
 // Self management task
 void CommsHandler::CommsHandlerManagementTask(void *pvParameters)
 {
-    CommsHandler *comms_handler = (CommsHandler *)pvParameters;
+    CommsHandler *instance = (CommsHandler *)pvParameters;
+
+    TickType_t prev_ota_check = xTaskGetTickCount();
 
     int pattern_count = 0;
     for (;;)
     {
+        // OTA Check
+        // TODO: REMOVE THIS DEBUG CONSTANT CHECKING
+        if (xTaskGetTickCount() >
+            (prev_ota_check + 60 * instance->_ota_freq_mins * configTICK_RATE_HZ) ||
+            true)
+        {
+            prev_ota_check = xTaskGetTickCount();
+            // Only wifi supported for now
+            if (WiFi.status() != WL_CONNECTED)
+            {
+                ESP_LOGE(TAG, "OTA Check failed, no WiFi connection");
+            }
+            else if (WiFi.softAPgetStationNum() != 0)
+            {
+                ESP_LOGE(TAG, "Auto OTA check aborted, users connected to station");
+            }
+            else
+            {
+                instance->_ota_helper->ClearOTAMessageStrings();
+                if (instance->_ota_helper->CheckUpdateJSON(instance->_ota_json_url))
+                {
+                    if (instance->_ota_helper->CheckJSONForNewVersion())
+                    {
+                        ESP_LOGI(TAG, "NEW VERISON FOUND: UPDATING");
+                        instance->_ota_helper->CallOTAInternetUpdateAsync("", true);
+                    }else{
+                        ESP_LOGI(TAG, "No new version");
+                    }
+                }
+                else
+                {
+                    ESP_LOGE(TAG, "Checking Update JSON Failed");
+                }
+            }
+        }
+
         // Check if there is a message in the queue (short check time)
 
         // If state is uninitialized, initialize the module
-        if (comms_handler->_state == Comms_Unititialized)
+        if (instance->_state == Comms_Unititialized)
         {
-            if (comms_handler->_net_preference == Comms_WiFi_Only ||
-                comms_handler->_net_preference == Comms_WiFi_over_LTE)
+            if (instance->_net_preference == Comms_WiFi_Only ||
+                instance->_net_preference == Comms_WiFi_over_LTE)
             {
-                //comms_handler->_wifi_power_on();
+                if (WiFi.softAPgetStationNum() == 0)
+                {
+                    // Only attempt connecting if there are no devices on the AP
+                    instance->_wifi_power_on();
+                }
             }
-            else if (comms_handler->_net_preference == Comms_LTE_Only ||
-                     comms_handler->_net_preference == Comms_LTE_over_WiFi)
+            else if (instance->_net_preference == Comms_LTE_Only ||
+                     instance->_net_preference == Comms_LTE_over_WiFi)
             {
-                // comms_handler->_lte_power_on();
+                // instance->_lte_power_on();
             }
         }
 
         // Set blinkies
-        if (comms_handler->_state == Comms_Unititialized)
+        if (instance->_state == Comms_Unititialized)
         {
             // Long pause then fast blinks unintialized
             ESP_LOGI(TAG, "Setting uninitialized LED pattern");
-            comms_handler->setIndicatorLEDPattern(4, 1000, 100, 100, 100);
+            instance->setIndicatorLEDPattern(4, 1000, 100, 100, 100);
         }
-        else if (comms_handler->_state == Comms_WiFi_Connected_Only ||
-                 comms_handler->_state == Comms_WiFi_Connected_Primary ||
-                 comms_handler->_state == Comms_WiFi_Connected_Secondary)
+        else if (instance->_state == Comms_WiFi_Connected_Only ||
+                 instance->_state == Comms_WiFi_Connected_Primary ||
+                 instance->_state == Comms_WiFi_Connected_Secondary)
         {
             // WiFi Pattern
             // off short, on long
             ESP_LOGI(TAG, "Setting WiFi LED pattern");
-            comms_handler->setIndicatorLEDPattern(2, 300, 1200);
+            instance->setIndicatorLEDPattern(2, 300, 1200);
         }
-        else if (comms_handler->_state == Comms_LTE_Connected_Only ||
-                 comms_handler->_state == Comms_LTE_Connected_Primary ||
-                 comms_handler->_state == Comms_LTE_Connected_Secondary)
+        else if (instance->_state == Comms_LTE_Connected_Only ||
+                 instance->_state == Comms_LTE_Connected_Primary ||
+                 instance->_state == Comms_LTE_Connected_Secondary)
         {
             // LTE Pattern
             // Off long, on short
             ESP_LOGI(TAG, "Setting LTE LED pattern");
-            comms_handler->setIndicatorLEDPattern(2, 1200, 300);
+            instance->setIndicatorLEDPattern(2, 1200, 300);
         }
-        else if (comms_handler->_state == Comms_Disconnected)
+        else if (instance->_state == Comms_Disconnected)
         {
             // fast blinks for disconnected
             ESP_LOGI(TAG, "Setting disconnected LED pattern");
-            comms_handler->setIndicatorLEDPattern(2, 300, 300);
+            instance->setIndicatorLEDPattern(2, 300, 300);
         }
 
         vTaskDelay(pdMS_TO_TICKS(3000));
@@ -163,11 +208,11 @@ void CommsHandler::CommsHandlerManagementTask(void *pvParameters)
 // Queue handler task
 void CommsHandler::CommsHandlerQueueTask(void *pvParameters)
 {
-    CommsHandler *comms_handler = (CommsHandler *)pvParameters;
+    CommsHandler *instance = (CommsHandler *)pvParameters;
     CommsHandler_MQTTMessage_t mqtt_message;
     for (;;)
     {
-        if (xQueueReceive(comms_handler->_mqtt_msg_queue, &mqtt_message, portMAX_DELAY))
+        if (xQueueReceive(instance->_mqtt_msg_queue, &mqtt_message, portMAX_DELAY))
         {
             ESP_LOGI(TAG, "Received message from queue");
             ESP_LOGI(TAG, "Topic: %s", mqtt_message.topic.c_str());
@@ -430,13 +475,15 @@ void CommsHandler::CommsHandlerWiFiTask(void *pvParameters)
                 if (instance->_state == Comms_Unititialized)
                 {
                     instance->_wifi_power_on();
-                    
+
                     if (instance->_wifi_mqtt_init() == false)
                     {
                         ESP_LOGE(TAG, "Failed to initialize MQTT client via WiFi");
-                    }else{
+                    }
+                    else
+                    {
                         instance->_state = Comms_WiFi_Connected_Only;
-                    }   
+                    }
                 }
                 else if (instance->_state == Comms_WiFi_Connected_Only ||
                          instance->_state == Comms_WiFi_Connected_Primary ||
@@ -503,7 +550,9 @@ bool CommsHandler::_wifi_mqtt_init()
     {
         ESP_LOGE(TAG, "WiFi not connected");
         return false;
-    }else{
+    }
+    else
+    {
         ESP_LOGI(TAG, "WiFi connected");
     }
 
@@ -577,14 +626,14 @@ void CommsHandler::setIndicatorLEDPattern(int count,
 
 void CommsHandler::IndicatorLEDPatternTask(void *pvParameters)
 {
-    CommsHandler *comms_handler = (CommsHandler *)pvParameters;
+    CommsHandler *instance = (CommsHandler *)pvParameters;
     BlinkPattern_t pattern;
     pattern.num_blinks = 0;
     pinMode(LED_BUILTIN, OUTPUT);
     for (;;)
     {
         // Keep looping till a new pattern is received
-        xQueueReceive(comms_handler->_led_blink_pattern, &pattern, 0);
+        xQueueReceive(instance->_led_blink_pattern, &pattern, 0);
 
         for (int i = 0; i < pattern.num_blinks; i++)
         {

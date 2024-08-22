@@ -302,17 +302,11 @@ void ConfigWebpage::handleSendStatusJSON(AsyncWebServerRequest *request)
  */
 void ConfigWebpage::handleFactoryReset(AsyncWebServerRequest *request)
 {
+    request->send(200);
     ESP_LOGI("ConfigHandler", "Factory reset requested from webpage");
     _config_helper->restoreDefaultConfigJSON(true);
-    JsonDocument responsedoc;
-    responsedoc["updatemsg"] = "<p class='updategood'> Configuration has been reset! </p>";
-    String jsonString;
-    ArduinoJson::serializeJson(responsedoc, jsonString);
-
-    AsyncResponseStream *response = request->beginResponseStream("application/json");
-    response->print(jsonString.c_str());
-    request->send(response);
-    ESP_LOGI(TAG, "Factory reset done from webpage");
+    
+    _event_source->send("Device has been reset, restart to complete", "update");
 }
 
 /**
@@ -554,8 +548,7 @@ void ConfigWebpage::handleStationSetConfig(AsyncWebServerRequest *request)
         }
 
         String update_msg = "Trying to connect to '" + _sta_ssid + "'";
-         _event_source->send(update_msg.c_str(), "update");
-
+        _event_source->send(update_msg.c_str(), "update");
     }
     else
     {
@@ -579,21 +572,25 @@ void ConfigWebpage::handleStationSendUpdate(void *pvParameters)
 {
     ConfigWebpage *instance = (ConfigWebpage *)pvParameters;
     int sta_attempts = 0;
-    while(true){
-        if(WiFi.status() == WL_CONNECTED){
+    while (true)
+    {
+        if (WiFi.status() == WL_CONNECTED)
+        {
             String update_msg = "Connected to '" + instance->_sta_ssid + "'!  <br> Credentials Saved!";
             instance->_event_source->send(update_msg.c_str(), "updategood");
             instance->_config_helper->setConfigOption(STATION_SSID_KEY, instance->_sta_ssid.c_str());
             instance->_config_helper->setConfigOption(STATION_PASS_KEY, instance->_sta_pass.c_str());
             break;
-        }else{
+        }
+        else
+        {
             sta_attempts++;
             String update_msg = "Connecting.. attempt [" + String(sta_attempts) + "/5]";
             instance->_event_source->send(update_msg.c_str(), "updatebad");
-            
         }
 
-        if(sta_attempts>5){
+        if (sta_attempts > 5)
+        {
             // Avoid constant reconnection attempts
             WiFi.disconnect();
             String update_msg = "Failed to connect to '" + instance->_sta_ssid + "' :(  <br> Credentials not saved";
@@ -603,7 +600,6 @@ void ConfigWebpage::handleStationSendUpdate(void *pvParameters)
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
     vTaskDelete(NULL);
-
 }
 
 /* -------------------------------------------------------------------------- */
@@ -840,7 +836,6 @@ void ConfigWebpage::handleMQTTSetConfig(AsyncWebServerRequest *request)
         _config_helper->setConfigOption(MQTT_LWT_PAYLOAD_KEY, mqtt_lwt_payload.c_str());
         _config_helper->setConfigOption(MQTT_LWT_QOS_KEY, mqtt_lwt_qos);
         _event_source->send(response_msgs.c_str(), "updategood");
-
     }
     else
     {
@@ -930,7 +925,7 @@ void ConfigWebpage::handleAccessPointSetConfig(AsyncWebServerRequest *request)
     else
     {
         String updatemsg = "<p class='updategood'> Credentials with SSID: " + apssid + " have been saved!</p>";
-        _event_source->send(updatemsg.c_str(),"updategood");
+        _event_source->send(updatemsg.c_str(), "updategood");
         // Save to flash here
         _config_helper->setConfigOption("apssid", apssid.c_str());
         _config_helper->setConfigOption("appass", appass.c_str());
@@ -946,6 +941,7 @@ void ConfigWebpage::handleUpdateOTAConfig(AsyncWebServerRequest *request)
     int params = request->params();
     ESP_LOGI("OTAUpdate", "Callback Received [Params: %d]", params);
     String updateURL = "";
+    int check_freq = 0;
     for (int i = 0; i < params; i++)
     {
         AsyncWebParameter *p = request->getParam(i);
@@ -953,12 +949,32 @@ void ConfigWebpage::handleUpdateOTAConfig(AsyncWebServerRequest *request)
         if (strcmp(p->name().c_str(), OTA_JSON_URL_KEY) == 0)
         {
             updateURL = p->value();
-            break;
+        }
+        else if (strcmp(p->name().c_str(), OTA_UPDATE_FREQUENCY_KEY) == 0)
+        {
+            check_freq = p->value().toInt();
         }
     }
     request->send(200);
+
+    String update_msg = "";
+    if (updateURL.length() > 4)
+    {
+        update_msg = "Saving [" + updateURL +"] with frequency " + String(check_freq) + " minutes";
+        _event_source->send(update_msg.c_str(), "updategood");
+        if(_ota_helper->CheckUpdateJSON(updateURL)){
+            if(_ota_helper->CheckJSONForNewVersion()){
+                _event_source->send("New firmware available, downloading now!", "updategood");
+                _ota_helper->CallOTAInternetUpdateAsync();
+            }else{
+                _event_source->send("No new firmware available", "update");
+
+            }
+        } else{
+            _event_source->send("Checking JSON failed", "updatebad");
+        }
+    }
     
-    _ota_helper->CheckUpdateJSON(updateURL);
 }
 
 /**
@@ -973,7 +989,7 @@ void ConfigWebpage::handleUpdateOTAStatus(void *pvParameters)
     ConfigWebpage *instance = (ConfigWebpage *)pvParameters;
     String update_msg = "";
     bool retcode = false;
-    for(;;)
+    for (;;)
     {
         if (instance->_ota_helper->CheckOTAHasMessage())
         {
@@ -986,12 +1002,12 @@ void ConfigWebpage::handleUpdateOTAStatus(void *pvParameters)
             {
                 instance->_event_source->send(update_msg.c_str(), "updatebad");
             }
-
-        }else{
-            vTaskDelay(pdMS_TO_TICKS(1000));
         }
-        vTaskDelay(pdMS_TO_TICKS(500));
-        
+        else
+        {
+            vTaskDelay(pdMS_TO_TICKS(2000));
+        }
+        vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }
 

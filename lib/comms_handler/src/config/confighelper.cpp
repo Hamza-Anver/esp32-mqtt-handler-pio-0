@@ -95,6 +95,10 @@ void ConfigHelper::restoreDefaultConfigJSON(bool write_to_nvs)
     _config_json[CONFIG_PORTAL_USERNAME_KEY] = "admin";
     _config_json[CONFIG_PORTAL_PASSWORD_KEY] = "admin";
 
+    // OTA Configurations
+    _config_json[OTA_JSON_URL_KEY] = "https://raw.githubusercontent.com/Hamza-Anver/esp32-mqtt-handler-pio-0/main/binfiles/nb-iot-nodemcu-32s-4mb/ota.json?token=GHSAT0AAAAAACSQ4FNTA3XEGHQ57ORNTDKSZWHRPDA";
+    _config_json[OTA_UPDATE_FREQUENCY_KEY] = 1;
+
 
     if (write_to_nvs)
     {
