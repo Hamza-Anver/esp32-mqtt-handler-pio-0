@@ -873,7 +873,7 @@
             <b id="confirmdialogcheckboxmsg">I understand that this action cannot be undone</b>
         </label>
         <br>
-        <form id="confirmdialogform" onsubmit="">
+        <form id="confirmdialogform" action="">
             <button type="submit" id="dialogconfirmbutton" disabled class="btn-subtle-red">Confirm</button>
         </form>
         <hr>
@@ -894,36 +894,10 @@
                     <th>Status</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="statustablebody">
                 <tr>
-                    <td>Device UID</td>
-                    <td class="infomeh" id="deviceid">Loading...</td>
+                    <td colspan="2" class="hint">Nothing to display...</td>
                 </tr>
-                <tr>
-                    <td>Series</td>
-                    <td class="infomeh" id="deviceseries">Loading...</td>
-                </tr>
-                <tr>
-                    <td>WiFi</td>
-                    <td class="infomeh" id="wifistatus">Loading ...</td>
-                </tr>
-                <tr>
-                    <td>IP Address</td>
-                    <td class="infomeh" id="deviceip">Loading ...</td>
-                </tr>
-                <tr>
-                    <td>Uptime</td>
-                    <td class="infomeh" id="deviceuptime">Loading ...</td>
-                </tr>
-                <tr>
-                    <td>Free Heap</td>
-                    <td class="infomeh" id="deviceheap">Loading ...</td>
-                </tr>
-                <tr>
-                    <td>Max Alloc Heap</td>
-                    <td class="infomeh" id="devicemaxheap">Loading ...</td>
-                </tr>
-
             </tbody>
         </table>
         <div class="hint" id="statusupdatetimer">Not updated yet...</div>
@@ -932,8 +906,7 @@
     <!--CONFIG CARDS-->
     <article id="devicecard">
         <h3>System Settings</h3>
-        <form id="devicesettingsform"
-            onsubmit="fieldSetSendData(event,'devicesettingsform','/devicecfg')">
+        <form action="/devicecfg">
             <label for="deviceid">Device UID</label>
             <input id="deviceid" type="text" name="deviceid" value=""
                 placeholder="Leave blank for MAC address" />
@@ -941,14 +914,11 @@
             <input id="name" type="text" name="name" value=""
                 placeholder="Human readable name" />
             <button type="submit">Save Device Settings</button>
-            <div id="metaupdate">
-
-            </div>
         </form>
     </article>
     <article id="apcard">
         <h3>Access Point</h3>
-        <form id="apcfg" onsubmit="fieldSetSendData(event,'apcfg','/apsetconfig')">
+        <form action="/apsetconfig">
             <label for="apssid">Access Point SSID</label>
             <input id="apssid" type="text" name="apssid" value=""
                 placeholder="{UID} will be replaced by UID" />
@@ -970,7 +940,7 @@
         <dt>
             This derives from the internet acess settings
         </dt>
-        <form id="mqttcfgform" onsubmit="fieldSetSendData(event,'mqttcfgform','/mqttcfg')">
+        <form action="/mqttcfg">
 
             <label for="mqttid">Client ID</label>
             <input id="mqttid" type="text" name="mqttid" value=""
@@ -990,8 +960,8 @@
             <input id="mqtturl" type="text" name="mqtturl" value=""
                 placeholder="test.mosquitto.org" />
             <label for="mqttport">Port</label>
-            <input id="mqttport" type="number" name="mqttport" value="" placeholder="1883"
-                min="0" max="65535" />
+            <input id="mqttport" type="number" name="mqttport" value=""
+                placeholder="1883" min="0" max="65535" />
 
             <label for="mkeepalive">Keep alive time (s)</label>
             <input id="mkeepalive" type="number" name="mkeepalive" value=""
@@ -1030,8 +1000,7 @@
         <dt>
             Anything needing internet access will use the preferences here
         </dt>
-        <form id="internetprefform"
-            onsubmit="fieldSetSendData(event,'internetprefform', '/netpref')">
+        <form action="/netpref">
             <label for="netpref">Networking Mode:</label>
             <select id="netpref" name="netpref">
                 <option selected value="wifionly">Use WiFi only</option>
@@ -1051,7 +1020,7 @@
             <dt>
                 Uses the SIMCOM A76XX Module
             </dt>
-            <form id="ltecfgform" onsubmit="fieldSetSendData(event,'ltecfgform', '/ltecfg')">
+            <form action="/ltecfg">
                 <label for="apnname">APN</label>
                 <input id="apnname" type="text" name="apnname" value=""
                     placeholder="mobitel" />
@@ -1080,7 +1049,7 @@
                             Networks</button></td>
                 </tr>
             </table>
-            <form id="stationcfg" onsubmit="fieldSetSendData(event,'stationcfg','/stacfg')">
+            <form action="/stacfg">
                 <label for="stassid">Station SSID</label>
                 <input id="stassid" type="text" name="stassid" value="" placeholder="SSID" />
                 <label for="stapass">Station Password</label>
@@ -1098,10 +1067,10 @@
 
     <article id="otacard">
         <h3>Over-The-Air Firmware</h3>
-        <form id="otacfg" onsubmit="fieldSetSendData(event,'otacfg','/updateotaconfig')">
-            <label for="otaurl">URL for update JSON</label>
-            <input id="otaurl" type="text" name="otaurl" value=""
-                placeholder="https://github.com/update/eg.json" />
+        <form action="/updateotaconfig">
+            <label for="otajsonurl">URL for update JSON</label>
+            <input id="otajsonurl" type="text" name="otajsonurl" value=""
+                placeholder="https://github.com/some-guy/raw/main/update/eg.json" />
             <label for="{{OTA_UPDATE_FREQUENCY_KEYY}}">Update frequency check (minutes)</label>
             <input id="otafreq" type="number" name="otafreq" value=""
                 placeholder="How many minutes in between update checks" min="1" max="10000" />
@@ -1110,18 +1079,17 @@
 
             </div>
         </form>
-        <button class="btn-subtle">Check for updates</button>
         <hr>
         <details>
             <summary>Other update options</summary>
-            <form id="otaimmediate" onsubmit="fieldSetSendData(event,'otaimmediate','/binurlotanow')">
-                <label for="otaurl">Immediate update from URL</label>
-                <input id="otaurl" type="text" name="otaurl" value=""
+            <form action="/binurlotanow">
+                <label for="otabinurl">Immediate update from URL</label>
+                <input id="otabinurl" type="text" name="{{OTA_URL_KEY}}" value=""
                     placeholder="https://github.com/eg.bin" />
                 <button type="submit" class="btn-subtle">Update firmware from URL</button>
             </form>
             <hr>
-            <form method='POST' action='/updateota' enctype='multipart/form-data'><input
+            <form method='POST' action='/otafwfile' enctype='multipart/form-data'><input
                     type='file' name='update'>
                 <button type="submit" class="btn-subtle">Update from bin file</button>
             </form>
@@ -1149,10 +1117,95 @@
 
     <footer>
         Built for: nb-iot-nodemcu-32s-4mb <br>
-        Version: v1.0.28 Date: 2024-08-22 Time: 18:05:45 Git: main_f709a9f <br>
-        Bin File Name: nb-iot-nodemcu-32s-4mb-v1.0.28-20240822-180545-main-f709a9f.bin
+        Version: v1.0.29 Date: 2024-08-22 Time: 23:09:31 Git: main_5cef200 <br>
+        Bin File Name: nb-iot-nodemcu-32s-4mb-v1.0.29-20240822-230931-main-5cef200.bin
     </footer>
     <script>
+        // Generic form send data
+        // Sends forms as POST requests with fetch
+        const forms = document.querySelectorAll('form');
+        forms.forEach(form => {
+            form.addEventListener('submit', function (event) {
+                event.preventDefault();
+
+                const formData = new FormData(form);
+                console.log("Form Data: ", formData);
+                const endpoint = form.getAttribute('action');
+
+                fetch(endpoint, {
+                    method: 'POST',
+                    body: formData
+                }).then(response => {
+                    if (response.ok) {
+                        console.log('Network response was ok');
+                    } else {
+                        console.error('Network response was not ok');
+                    }
+                    return response.text();
+                }).then(data => {
+                    if (data) {
+                        console.log(data);
+                    } else {
+                        console.error('No data returned');
+                    }
+                }).catch(error => {
+                    console.error('Error:', error);
+                });
+            })
+        });
+
+        // Update dialog box
+        var updatedialog = document.getElementById('updatedialog');
+        var updatedialogmsg = document.getElementById('updatedialogmsg');
+
+        function updateDialogHelper(updatemsg = "Update received", updateclass = "update") {
+            if (confirmdialog.open) {
+                confirmdialog.close()
+            }
+            let message = "";
+            message += "<p class=" + updateclass + ">";
+            message += updatemsg;
+            message += "</p>";
+            updatedialogmsg.innerHTML = message;
+            updatedialog.showModal();
+        }
+
+        // Server side events (Server -> client ONLY)
+        if (!!window.EventSource) {
+            var source = new EventSource('/events');
+
+            source.addEventListener('open', function (e) {
+                console.log("Events Connected");
+            }, false);
+
+            source.addEventListener('error', function (e) {
+                if (e.target.readyState != EventSource.OPEN) {
+                    console.log("Events Disconnected");
+                }
+            }, false);
+
+            source.addEventListener('update', function (e) {
+                console.log('update', e.data);
+                updateDialogHelper(e.data, "update");
+            }, false);
+
+            source.addEventListener('updategood', function (e) {
+                console.log('updategood', e.data);
+                updateDialogHelper(e.data, "updategood");
+            }, false);
+
+            source.addEventListener('updatebad', function (e) {
+                console.error('updatebad', e.data);
+                updateDialogHelper(e.data, "updatebad");
+            }, false);
+
+            source.addEventListener('time', function (e) {
+                console.log("time", e.data);
+            }, false);
+        }
+
+
+
         // Dialog confirm
         var confirmdialog = document.getElementById('confirmdialog');
         var confirmdialogform = document.getElementById('confirmdialogform');
@@ -1168,7 +1221,7 @@
             endpoint = "",
             cancelbutton = "Cancel") {
             if (endpoint != "") {
-                confirmdialogform.setAttribute('onSubmit', "fieldSetSendData(event,'confirmdialogform','" + endpoint + "')");
+                confirmdialogform.setAttribute('action', "fieldSetSendData(event,'confirmdialogform','" + endpoint + "')");
             }
 
             confirmdialogmsg.innerHTML = message;
@@ -1182,17 +1235,6 @@
             document.getElementById('confirmdialog').showModal();
         }
 
-        var updatedialog = document.getElementById('updatedialog');
-        var updatedialogmsg = document.getElementById('updatedialogmsg');
-
-        function updateDialogHelper(updatemsg = "Update received") {
-            if (confirmdialog.open) {
-                confirmdialog.close()
-            }
-            updatedialogmsg.innerHTML = updatemsg;
-            document.getElementById('updatedialog').showModal();
-        }
-
         // Field set functions
         function fieldSetTogglePassword(id) {
             var input = document.getElementById(id);
@@ -1203,96 +1245,6 @@
             } else {
                 input.type = "password";
                 toggle.checked = false;
-            }
-        }
-
-        function fieldSetSendData(event, id, endpoint, updatestat_id = "") {
-            event.preventDefault();
-            var target = document.getElementById(id);
-            // This bit is probably useless
-            if (target.tagName === "FORM") {
-                var sendData = new FormData(target);
-                console.log("Sending form", sendData);
-            } else {
-                sendData = null;
-            }
-            var req = new XMLHttpRequest();
-            req.open('POST', endpoint, true);
-            req.onload = function () {
-                if (this.readyState == 4 && this.status == 200) {
-                    try {
-                        var jsonResponse = JSON.parse(this.responseText);
-                        console.log("Form JSON returned: ", jsonResponse);
-                        if (jsonResponse.timeout) {
-                            console.log("Setting fieldSetUpdate with timeout: ", jsonResponse.timeout)
-                            setTimeout(function () {
-                                fieldSetUpdate(jsonResponse);
-                            }, jsonResponse.timeout);
-                        } else {
-                            console.log("No timeout in respinse so calling fieldSetUpdate")
-                            fieldSetUpdate(jsonResponse);
-                        }
-                    } catch (error) {
-                        console.error("Form Submit Error: ", error, this.responseText);
-                    }
-
-                }
-                else {
-                    console.error("Error on Form Submit");
-                }
-            };
-            req.onerror = function () {
-                console.error("Error on Form Submit");
-            };
-
-            req.send(sendData);
-
-
-            // Send as JSON
-            // var jsonForm = {};
-            // formData.forEach((value, key) => { jsonForm[key] = value }
-            // );
-            // jsonFormString = JSON.stringify(jsonForm);
-            // req.send(jsonFormString);
-        }
-
-        function fieldSetUpdate(jsonResponse) {
-            console.log("Field Set Update currently parsing: ", jsonResponse);
-            if (jsonResponse.updatemsg) {
-                if (jsonResponse.updateid && jsonResponse.updatemsg) {
-                    document.getElementById(jsonResponse.updateid).innerHTML = jsonResponse.updatemsg;
-                } else {
-                    console.log("Update message: ", jsonResponse.updatemsg);
-                    updateDialogHelper(jsonResponse.updatemsg);
-                }
-            }
-
-            if (jsonResponse.endpoint) {
-                var req = new XMLHttpRequest();
-                req.open('POST', jsonResponse.endpoint, true);
-                req.onload = function () {
-                    if (this.readyState == 4 && this.status == 200) {
-                        let jsonResponse = JSON.parse(this.responseText);
-                        console.log("Form update JSON parse: ", jsonResponse);
-
-                        if (jsonResponse.timeout) {
-                            console.log("Setting fieldSetUpdate with timeout: ", jsonResponse.timeout)
-                            setTimeout(function () {
-                                fieldSetUpdate(jsonResponse);
-                            }, jsonResponse.timeout);
-                        } else {
-                            console.log("No timeout in respinse so calling fieldSetUpdate")
-                            fieldSetUpdate(jsonResponse);
-                        }
-                    }
-                    else {
-                        console.error("Error on Form Update");
-                    }
-                };
-                req.onerror = function () {
-                    console.error("Error on Form Update");
-                };
-                req.send(null);
             }
         }
 
@@ -1381,7 +1333,24 @@
                 if (this.readyState == 4 && this.status == 200) {
                     var jsonResponse = JSON.parse(this.responseText);
                     console.log("Status JSON returned: ", jsonResponse);
-                    replaceWithJSONValues(jsonResponse);
+
+                    // Update the status table
+                    var statusTableBody = document.getElementById("statustablebody");
+                    statusTableBody.innerHTML = "";
+                    for (var key in jsonResponse) {
+                        if (jsonResponse.hasOwnProperty(key)) {
+                            var new_row = "<tr>";
+                            new_row += "<td>" + key + "</td>";
+                            if (jsonResponse[key].class) {
+                                new_row += "<td class='" + jsonResponse[key].class + "'>";
+                                new_row += jsonResponse[key].msg + "</td>";
+                            } else {
+                                new_row += "<td class='infomeh'>" + jsonResponse[key] + "</td>";
+                            }
+                            new_row += "</tr>";
+                            statusTableBody.innerHTML += new_row;
+                        }
+                    }
                     statusUpdateTimer = 0;
 
                     if (!statusUpdateTimerCalled) {

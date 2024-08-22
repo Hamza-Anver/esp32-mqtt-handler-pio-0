@@ -44,7 +44,7 @@ CommsHandler::CommsHandler()
 
     _ota_helper = new OTAHelper(_lte_client);
     // TODO: address the station and wifi initialization
-    //_config_webpage = new ConfigWebpage(_config_helper, _ota_helper);
+    _config_webpage = new ConfigWebpage(_config_helper, _ota_helper);
 }
 
 void CommsHandler::_load_current_config()

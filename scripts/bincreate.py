@@ -16,7 +16,10 @@ def extract_definitions(header_file):
 
             if match:
                 key, value = match.groups()
-                definitions[key] = value
+                if(value.isdigit()):
+                    definitions[key] = int(value)
+                else:
+                    definitions[key] = value
     return definitions
 
 
@@ -42,7 +45,8 @@ def after_build(source, target, env):
 
     copy_bin_to_loc(binpath, os.path.join(newbin_dir,dest_name)) # type: ignore
 
-    binurl = "https://github.com/Hamza-Anver/esp32-mqtt-handler-pio-0/" + "binfiles/" + version_defs["VERSION_ENVIRONMENT"] + '/' + dest_name
+    "https://github.com/Hamza-Anver/esp32-mqtt-handler-pio-0/raw/main/binfiles/nb-iot-nodemcu-32s-4mb/nb-iot-nodemcu-32s-4mb.bin"
+    binurl = "https://github.com/Hamza-Anver/esp32-mqtt-handler-pio-0/raw/"+version_defs["VERSION_GIT_BRANCH"]+"/binfiles/" + version_defs["VERSION_ENVIRONMENT"] + '/' + dest_name
 
     jsondata = {
         "name": version_defs["VERSION_STRING"],
@@ -57,6 +61,10 @@ def after_build(source, target, env):
     
     with open(newjson_loc, 'w') as jsonfile:
         json.dump(jsondata, jsonfile, indent=4)
+
+    json_formatted_str = json.dumps(jsondata, indent=4)
+    print("OTA JSON FIlE: ")
+    print(json_formatted_str)
 
 
 Import("env") # type: ignore

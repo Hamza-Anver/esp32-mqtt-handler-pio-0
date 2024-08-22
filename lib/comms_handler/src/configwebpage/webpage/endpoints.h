@@ -2,6 +2,9 @@
 #define ENDPOINTS_H
 
 
+// Websockets
+#define SERVER_SIDE_EVENTS_ENDPOINT "/events"
+
 #define INTERNET_PREF_CONFIG_ENDPOINT "/netpref"
 
 #define STA_START_SCAN_ENDPOINT "/startscan"
@@ -18,7 +21,7 @@
 #define FACTORY_RESET_ENDPOINT "/factoryreset"
 #define RESTART_DEVICE_ENDPOINT "/restartdevice"
 
-#define UPDATE_FILE_UPLOAD_ENDPOINT "/updateota"
+#define UPDATE_FIRMWARE_UPLOAD_ENDPOINT "/otafwfile"
 #define UPDATE_OTA_BIN_URL_ENDPOINT "/binurlotanow"
 
 #define UPDATE_OTA_CONFIG_ENDPOINT "/updateotaconfig"

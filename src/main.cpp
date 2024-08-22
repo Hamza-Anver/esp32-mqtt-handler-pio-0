@@ -30,7 +30,7 @@ void loop()
     while (true)
     {
         delay(1000);
-        //ESP_LOGI("Main", "Free heap size: [%d], Max Free Heap Alloc: [%d]", ESP.getFreeHeap(), ESP.getMaxAllocHeap());
+        ESP_LOGI("Main", "Free heap size: [%d], Max Free Heap Alloc: [%d]", ESP.getFreeHeap(), ESP.getMaxAllocHeap());
 
     }
 }

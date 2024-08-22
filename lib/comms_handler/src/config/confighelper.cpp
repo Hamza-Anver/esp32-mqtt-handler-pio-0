@@ -92,6 +92,9 @@ void ConfigHelper::restoreDefaultConfigJSON(bool write_to_nvs)
     _config_json[MQTT_LWT_QOS_KEY] = 0;
     _config_json[MQTT_QUEUE_SIZE_KEY] = 30;
 
+    _config_json[CONFIG_PORTAL_USERNAME_KEY] = "admin";
+    _config_json[CONFIG_PORTAL_PASSWORD_KEY] = "admin";
+
 
     if (write_to_nvs)
     {

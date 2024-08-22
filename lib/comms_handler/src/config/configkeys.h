@@ -5,6 +5,8 @@
 // DEFAULT VALUES FOR THE CONFIGURATIONS ARE IN THE CPP FILE
 #define DEVICE_UID_KEY "deviceid"
 #define DEVICE_NAME_KEY "name"
+#define CONFIG_PORTAL_USERNAME_KEY "pusername"
+#define CONFIG_PORTAL_PASSWORD_KEY "ppassword"
 
 #define ACCESSPOINT_SSID_KEY "apssid"
 #define ACCESSPOINT_PASS_KEY "appass"
@@ -46,20 +48,9 @@
 #define MQTT_QUEUE_SIZE_KEY "mqttqsize"
 
 
-
-
-#define OTA_URL_KEY "otaurl"
+#define OTA_JSON_URL_KEY "otajsonurl"
+#define OTA_BIN_URL_KEY "otabinurl"
 #define OTA_UPDATE_FREQUENCY_KEY "otafreq"
-
-// IDS for references in the HTML file
-#define WIFI_STATUS_MSG_ID "wifistatus"
-#define LTE_STATUS_MSG_ID "ltestatus"
-#define DEVICE_UID_MSG_ID "deviceuid"
-#define DEVICE_IP_MSG_ID "deviceip"
-#define DEVICE_UPTIME_MSG_ID "deviceuptime"
-#define DEVICE_FREE_HEAP_MSG_ID "deviceheap"
-#define DEVICE_MAX_ALLOC_HEAP_MSG_ID "devicemaxheap"
-#define DEVICE_SERIES_MSG_ID "deviceseries"
 
 
 

@@ -873,7 +873,7 @@
             <b id="confirmdialogcheckboxmsg">I understand that this action cannot be undone</b>
         </label>
         <br>
-        <form id="confirmdialogform" onsubmit="">
+        <form id="confirmdialogform" action="">
             <button type="submit" id="dialogconfirmbutton" disabled class="btn-subtle-red">Confirm</button>
         </form>
         <hr>
@@ -894,36 +894,10 @@
                     <th>Status</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="statustablebody">
                 <tr>
-                    <td>Device UID</td>
-                    <td class="infomeh" id="{{DEVICE_UID_KEY}}">Loading...</td>
+                    <td colspan="2" class="hint">Nothing to display...</td>
                 </tr>
-                <tr>
-                    <td>Series</td>
-                    <td class="infomeh" id="{{DEVICE_SERIES_MSG_ID}}">Loading...</td>
-                </tr>
-                <tr>
-                    <td>WiFi</td>
-                    <td class="infomeh" id="{{WIFI_STATUS_MSG_ID}}">Loading ...</td>
-                </tr>
-                <tr>
-                    <td>IP Address</td>
-                    <td class="infomeh" id="{{DEVICE_IP_MSG_ID}}">Loading ...</td>
-                </tr>
-                <tr>
-                    <td>Uptime</td>
-                    <td class="infomeh" id="{{DEVICE_UPTIME_MSG_ID}}">Loading ...</td>
-                </tr>
-                <tr>
-                    <td>Free Heap</td>
-                    <td class="infomeh" id="{{DEVICE_FREE_HEAP_MSG_ID}}">Loading ...</td>
-                </tr>
-                <tr>
-                    <td>Max Alloc Heap</td>
-                    <td class="infomeh" id="{{DEVICE_MAX_ALLOC_HEAP_MSG_ID}}">Loading ...</td>
-                </tr>
-
             </tbody>
         </table>
         <div class="hint" id="statusupdatetimer">Not updated yet...</div>
@@ -932,8 +906,7 @@
     <!--CONFIG CARDS-->
     <article id="devicecard">
         <h3>System Settings</h3>
-        <form id="devicesettingsform"
-            onsubmit="fieldSetSendData(event,'devicesettingsform','{{DEVICE_SET_SETTINGS_ENDPOINT}}')">
+        <form action="{{DEVICE_SET_SETTINGS_ENDPOINT}}">
             <label for="{{DEVICE_UID_KEY}}">Device UID</label>
             <input id="{{DEVICE_UID_KEY}}" type="text" name="{{DEVICE_UID_KEY}}" value=""
                 placeholder="Leave blank for MAC address" />
@@ -941,14 +914,11 @@
             <input id="{{DEVICE_NAME_KEY}}" type="text" name="{{DEVICE_NAME_KEY}}" value=""
                 placeholder="Human readable name" />
             <button type="submit">Save Device Settings</button>
-            <div id="metaupdate">
-
-            </div>
         </form>
     </article>
     <article id="apcard">
         <h3>Access Point</h3>
-        <form id="apcfg" onsubmit="fieldSetSendData(event,'apcfg','{{AP_SET_CONFIG_ENDPOINT}}')">
+        <form action="{{AP_SET_CONFIG_ENDPOINT}}">
             <label for="{{ACCESSPOINT_SSID_KEY}}">Access Point SSID</label>
             <input id="{{ACCESSPOINT_SSID_KEY}}" type="text" name="{{ACCESSPOINT_SSID_KEY}}" value=""
                 placeholder="{{UID_REPLACEMENT_PATTERN}} will be replaced by UID" />
@@ -970,7 +940,7 @@
         <dt>
             This derives from the internet acess settings
         </dt>
-        <form id="mqttcfgform" onsubmit="fieldSetSendData(event,'mqttcfgform','{{MQTT_SET_CONFIG_ENDPOINT}}')">
+        <form action="{{MQTT_SET_CONFIG_ENDPOINT}}">
 
             <label for="{{MQTT_CLIENT_ID_KEY}}">Client ID</label>
             <input id="{{MQTT_CLIENT_ID_KEY}}" type="text" name="{{MQTT_CLIENT_ID_KEY}}" value=""
@@ -990,8 +960,8 @@
             <input id="{{MQTT_SERVER_URL_KEY}}" type="text" name="{{MQTT_SERVER_URL_KEY}}" value=""
                 placeholder="test.mosquitto.org" />
             <label for="{{MQTT_SERVER_PORT_KEY}}">Port</label>
-            <input id="{{MQTT_SERVER_PORT_KEY}}" type="number" name="{{MQTT_SERVER_PORT_KEY}}" value="" placeholder="1883"
-                min="0" max="65535" />
+            <input id="{{MQTT_SERVER_PORT_KEY}}" type="number" name="{{MQTT_SERVER_PORT_KEY}}" value=""
+                placeholder="1883" min="0" max="65535" />
 
             <label for="{{MQTT_KEEPALIVE_KEY}}">Keep alive time (s)</label>
             <input id="{{MQTT_KEEPALIVE_KEY}}" type="number" name="{{MQTT_KEEPALIVE_KEY}}" value=""
@@ -1030,8 +1000,7 @@
         <dt>
             Anything needing internet access will use the preferences here
         </dt>
-        <form id="internetprefform"
-            onsubmit="fieldSetSendData(event,'internetprefform', '{{INTERNET_PREF_CONFIG_ENDPOINT}}')">
+        <form action="{{INTERNET_PREF_CONFIG_ENDPOINT}}">
             <label for="{{NET_PRIORITY_PREF_KEY}}">Networking Mode:</label>
             <select id="{{NET_PRIORITY_PREF_KEY}}" name="{{NET_PRIORITY_PREF_KEY}}">
                 <option selected value="{{NET_WIFI_ONLY_PREF_OPTION}}">Use WiFi only</option>
@@ -1051,7 +1020,7 @@
             <dt>
                 Uses the SIMCOM A76XX Module
             </dt>
-            <form id="ltecfgform" onsubmit="fieldSetSendData(event,'ltecfgform', '{{LTE_SET_CONFIG_ENDPOINT}}')">
+            <form action="{{LTE_SET_CONFIG_ENDPOINT}}">
                 <label for="{{A76XX_APN_NAME_KEY}}">APN</label>
                 <input id="{{A76XX_APN_NAME_KEY}}" type="text" name="{{A76XX_APN_NAME_KEY}}" value=""
                     placeholder="mobitel" />
@@ -1080,7 +1049,7 @@
                             Networks</button></td>
                 </tr>
             </table>
-            <form id="stationcfg" onsubmit="fieldSetSendData(event,'stationcfg','{{STA_SET_CONFIG_ENDPOINT}}')">
+            <form action="{{STA_SET_CONFIG_ENDPOINT}}">
                 <label for="{{STATION_SSID_KEY}}">Station SSID</label>
                 <input id="{{STATION_SSID_KEY}}" type="text" name="{{STATION_SSID_KEY}}" value="" placeholder="SSID" />
                 <label for="{{STATION_PASS_KEY}}">Station Password</label>
@@ -1098,10 +1067,10 @@
 
     <article id="otacard">
         <h3>Over-The-Air Firmware</h3>
-        <form id="otacfg" onsubmit="fieldSetSendData(event,'otacfg','{{UPDATE_OTA_CONFIG_ENDPOINT}}')">
-            <label for="{{OTA_URL_KEY}}">URL for update JSON</label>
-            <input id="{{OTA_URL_KEY}}" type="text" name="{{OTA_URL_KEY}}" value=""
-                placeholder="https://github.com/update/eg.json" />
+        <form action="{{UPDATE_OTA_CONFIG_ENDPOINT}}">
+            <label for="{{OTA_JSON_URL_KEY}}">URL for update JSON</label>
+            <input id="{{OTA_JSON_URL_KEY}}" type="text" name="{{OTA_JSON_URL_KEY}}" value=""
+                placeholder="https://github.com/some-guy/raw/main/update/eg.json" />
             <label for="{{OTA_UPDATE_FREQUENCY_KEYY}}">Update frequency check (minutes)</label>
             <input id="{{OTA_UPDATE_FREQUENCY_KEY}}" type="number" name="{{OTA_UPDATE_FREQUENCY_KEY}}" value=""
                 placeholder="How many minutes in between update checks" min="1" max="10000" />
@@ -1110,18 +1079,17 @@
 
             </div>
         </form>
-        <button class="btn-subtle">Check for updates</button>
         <hr>
         <details>
             <summary>Other update options</summary>
-            <form id="otaimmediate" onsubmit="fieldSetSendData(event,'otaimmediate','{{UPDATE_OTA_BIN_URL_ENDPOINT}}')">
-                <label for="{{OTA_URL_KEY}}">Immediate update from URL</label>
-                <input id="{{OTA_URL_KEY}}" type="text" name="{{OTA_URL_KEY}}" value=""
+            <form action="{{UPDATE_OTA_BIN_URL_ENDPOINT}}">
+                <label for="{{OTA_BIN_URL_KEY}}">Immediate update from URL</label>
+                <input id="{{OTA_BIN_URL_KEY}}" type="text" name="{{OTA_URL_KEY}}" value=""
                     placeholder="https://github.com/eg.bin" />
                 <button type="submit" class="btn-subtle">Update firmware from URL</button>
             </form>
             <hr>
-            <form method='POST' action='{{UPDATE_FILE_UPLOAD_ENDPOINT}}' enctype='multipart/form-data'><input
+            <form method='POST' action='{{UPDATE_FIRMWARE_UPLOAD_ENDPOINT}}' enctype='multipart/form-data'><input
                     type='file' name='update'>
                 <button type="submit" class="btn-subtle">Update from bin file</button>
             </form>
@@ -1153,6 +1121,91 @@
         Bin File Name: {{VERSION_STRING_NO_SPACES}}.bin
     </footer>
     <script>
+        // Generic form send data
+        // Sends forms as POST requests with fetch
+        const forms = document.querySelectorAll('form');
+        forms.forEach(form => {
+            form.addEventListener('submit', function (event) {
+                event.preventDefault();
+
+                const formData = new FormData(form);
+                console.log("Form Data: ", formData);
+                const endpoint = form.getAttribute('action');
+
+                fetch(endpoint, {
+                    method: 'POST',
+                    body: formData
+                }).then(response => {
+                    if (response.ok) {
+                        console.log('Network response was ok');
+                    } else {
+                        console.error('Network response was not ok');
+                    }
+                    return response.text();
+                }).then(data => {
+                    if (data) {
+                        console.log(data);
+                    } else {
+                        console.error('No data returned');
+                    }
+                }).catch(error => {
+                    console.error('Error:', error);
+                });
+            })
+        });
+
+        // Update dialog box
+        var updatedialog = document.getElementById('updatedialog');
+        var updatedialogmsg = document.getElementById('updatedialogmsg');
+
+        function updateDialogHelper(updatemsg = "Update received", updateclass = "update") {
+            if (confirmdialog.open) {
+                confirmdialog.close()
+            }
+            let message = "";
+            message += "<p class=" + updateclass + ">";
+            message += updatemsg;
+            message += "</p>";
+            updatedialogmsg.innerHTML = message;
+            updatedialog.showModal();
+        }
+
+        // Server side events (Server -> client ONLY)
+        if (!!window.EventSource) {
+            var source = new EventSource('{{SERVER_SIDE_EVENTS_ENDPOINT}}');
+
+            source.addEventListener('open', function (e) {
+                console.log("Events Connected");
+            }, false);
+
+            source.addEventListener('error', function (e) {
+                if (e.target.readyState != EventSource.OPEN) {
+                    console.log("Events Disconnected");
+                }
+            }, false);
+
+            source.addEventListener('update', function (e) {
+                console.log('update', e.data);
+                updateDialogHelper(e.data, "update");
+            }, false);
+
+            source.addEventListener('updategood', function (e) {
+                console.log('updategood', e.data);
+                updateDialogHelper(e.data, "updategood");
+            }, false);
+
+            source.addEventListener('updatebad', function (e) {
+                console.error('updatebad', e.data);
+                updateDialogHelper(e.data, "updatebad");
+            }, false);
+
+            source.addEventListener('time', function (e) {
+                console.log("time", e.data);
+            }, false);
+        }
+
+
+
         // Dialog confirm
         var confirmdialog = document.getElementById('confirmdialog');
         var confirmdialogform = document.getElementById('confirmdialogform');
@@ -1168,7 +1221,7 @@
             endpoint = "",
             cancelbutton = "Cancel") {
             if (endpoint != "") {
-                confirmdialogform.setAttribute('onSubmit', "fieldSetSendData(event,'confirmdialogform','" + endpoint + "')");
+                confirmdialogform.setAttribute('action', "fieldSetSendData(event,'confirmdialogform','" + endpoint + "')");
             }
 
             confirmdialogmsg.innerHTML = message;
@@ -1182,17 +1235,6 @@
             document.getElementById('confirmdialog').showModal();
         }
 
-        var updatedialog = document.getElementById('updatedialog');
-        var updatedialogmsg = document.getElementById('updatedialogmsg');
-
-        function updateDialogHelper(updatemsg = "Update received") {
-            if (confirmdialog.open) {
-                confirmdialog.close()
-            }
-            updatedialogmsg.innerHTML = updatemsg;
-            document.getElementById('updatedialog').showModal();
-        }
-
         // Field set functions
         function fieldSetTogglePassword(id) {
             var input = document.getElementById(id);
@@ -1203,96 +1245,6 @@
             } else {
                 input.type = "password";
                 toggle.checked = false;
-            }
-        }
-
-        function fieldSetSendData(event, id, endpoint, updatestat_id = "") {
-            event.preventDefault();
-            var target = document.getElementById(id);
-            // This bit is probably useless
-            if (target.tagName === "FORM") {
-                var sendData = new FormData(target);
-                console.log("Sending form", sendData);
-            } else {
-                sendData = null;
-            }
-            var req = new XMLHttpRequest();
-            req.open('POST', endpoint, true);
-            req.onload = function () {
-                if (this.readyState == 4 && this.status == 200) {
-                    try {
-                        var jsonResponse = JSON.parse(this.responseText);
-                        console.log("Form JSON returned: ", jsonResponse);
-                        if (jsonResponse.timeout) {
-                            console.log("Setting fieldSetUpdate with timeout: ", jsonResponse.timeout)
-                            setTimeout(function () {
-                                fieldSetUpdate(jsonResponse);
-                            }, jsonResponse.timeout);
-                        } else {
-                            console.log("No timeout in respinse so calling fieldSetUpdate")
-                            fieldSetUpdate(jsonResponse);
-                        }
-                    } catch (error) {
-                        console.error("Form Submit Error: ", error, this.responseText);
-                    }
-
-                }
-                else {
-                    console.error("Error on Form Submit");
-                }
-            };
-            req.onerror = function () {
-                console.error("Error on Form Submit");
-            };
-
-            req.send(sendData);
-
-
-            // Send as JSON
-            // var jsonForm = {};
-            // formData.forEach((value, key) => { jsonForm[key] = value }
-            // );
-            // jsonFormString = JSON.stringify(jsonForm);
-            // req.send(jsonFormString);
-        }
-
-        function fieldSetUpdate(jsonResponse) {
-            console.log("Field Set Update currently parsing: ", jsonResponse);
-            if (jsonResponse.updatemsg) {
-                if (jsonResponse.updateid && jsonResponse.updatemsg) {
-                    document.getElementById(jsonResponse.updateid).innerHTML = jsonResponse.updatemsg;
-                } else {
-                    console.log("Update message: ", jsonResponse.updatemsg);
-                    updateDialogHelper(jsonResponse.updatemsg);
-                }
-            }
-
-            if (jsonResponse.endpoint) {
-                var req = new XMLHttpRequest();
-                req.open('POST', jsonResponse.endpoint, true);
-                req.onload = function () {
-                    if (this.readyState == 4 && this.status == 200) {
-                        let jsonResponse = JSON.parse(this.responseText);
-                        console.log("Form update JSON parse: ", jsonResponse);
-
-                        if (jsonResponse.timeout) {
-                            console.log("Setting fieldSetUpdate with timeout: ", jsonResponse.timeout)
-                            setTimeout(function () {
-                                fieldSetUpdate(jsonResponse);
-                            }, jsonResponse.timeout);
-                        } else {
-                            console.log("No timeout in respinse so calling fieldSetUpdate")
-                            fieldSetUpdate(jsonResponse);
-                        }
-                    }
-                    else {
-                        console.error("Error on Form Update");
-                    }
-                };
-                req.onerror = function () {
-                    console.error("Error on Form Update");
-                };
-                req.send(null);
             }
         }
 
@@ -1381,7 +1333,24 @@
                 if (this.readyState == 4 && this.status == 200) {
                     var jsonResponse = JSON.parse(this.responseText);
                     console.log("Status JSON returned: ", jsonResponse);
-                    replaceWithJSONValues(jsonResponse);
+
+                    // Update the status table
+                    var statusTableBody = document.getElementById("statustablebody");
+                    statusTableBody.innerHTML = "";
+                    for (var key in jsonResponse) {
+                        if (jsonResponse.hasOwnProperty(key)) {
+                            var new_row = "<tr>";
+                            new_row += "<td>" + key + "</td>";
+                            if (jsonResponse[key].class) {
+                                new_row += "<td class='" + jsonResponse[key].class + "'>";
+                                new_row += jsonResponse[key].msg + "</td>";
+                            } else {
+                                new_row += "<td class='infomeh'>" + jsonResponse[key] + "</td>";
+                            }
+                            new_row += "</tr>";
+                            statusTableBody.innerHTML += new_row;
+                        }
+                    }
                     statusUpdateTimer = 0;
 
                     if (!statusUpdateTimerCalled) {

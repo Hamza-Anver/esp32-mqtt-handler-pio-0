@@ -14,15 +14,17 @@ static const char *TAG = "ConfigWebpage";
 
 /**
  * @brief Construct a new Config Webpage:: Config Webpage object
- * 
+ *
  * @param config_helper optional argument to pass in a config helper object
  * @param ota_helper optional argument to pass in an ota helper object
- * 
+ *
  *  If either or both are not passed, new ones will be created
  */
 ConfigWebpage::ConfigWebpage(ConfigHelper *config_helper, OTAHelper *ota_helper)
 {
     _server = new AsyncWebServer(80);
+    _event_source = new AsyncEventSource(SERVER_SIDE_EVENTS_ENDPOINT);
+    _server->addHandler(_event_source);
     _dnsServer = new DNSServer();
     _ap_ip = IPAddress(192, 168, 4, 1);
     _net_msk = IPAddress(255, 255, 255, 0);
@@ -37,7 +39,7 @@ ConfigWebpage::ConfigWebpage(ConfigHelper *config_helper, OTAHelper *ota_helper)
     }
 
     if (ota_helper == nullptr)
-    {// TODO: fix this assignment
+    { // TODO: fix this assignment
         _ota_helper = nullptr;
     }
     else
@@ -68,6 +70,8 @@ ConfigWebpage::ConfigWebpage(ConfigHelper *config_helper, OTAHelper *ota_helper)
 
     // Start server task (dns loop)
     xTaskCreate(ConfigWebpage::ConfigServerTask, "ConfigServerTask", 4096, this, 1, NULL);
+    // Start OTA status task, will send updates if available
+    xTaskCreate(ConfigWebpage::handleUpdateOTAStatus, "OTAStatusTask", 4096, this, 1, NULL);
 
     // Start captive portal callbacks
     _server->on("/", [this](AsyncWebServerRequest *request)
@@ -81,6 +85,10 @@ ConfigWebpage::ConfigWebpage(ConfigHelper *config_helper, OTAHelper *ota_helper)
 
     _server->onNotFound([this](AsyncWebServerRequest *request)
                         { this->ConfigServeRootPage(request); });
+
+    // Device settings
+    _server->on(DEVICE_SET_SETTINGS_ENDPOINT, [this](AsyncWebServerRequest *request)
+                { this->handleDeviceSettingsConfig(request); });
 
     // Internet preferences
     _server->on(INTERNET_PREF_CONFIG_ENDPOINT, [this](AsyncWebServerRequest *request)
@@ -124,6 +132,13 @@ ConfigWebpage::ConfigWebpage(ConfigHelper *config_helper, OTAHelper *ota_helper)
                 { this->handleDeviceRestart(request); });
 
     // OTA Callbacks
+    _server->on(UPDATE_OTA_CONFIG_ENDPOINT, [this](AsyncWebServerRequest *request)
+                { this->handleUpdateOTAConfig(request); });
+
+    _server->on(UPDATE_FIRMWARE_UPLOAD_ENDPOINT, HTTP_POST, [this](AsyncWebServerRequest *request)
+                { request->send(200); }, [this](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final)
+                { this->handleUpdateOTAFileUpload(request, filename, index, data, len, final); });
+
     _server->on(UPDATE_OTA_BIN_URL_ENDPOINT, [this](AsyncWebServerRequest *request)
                 { this->handleUpdateOTANowRequest(request); });
 
@@ -133,6 +148,7 @@ ConfigWebpage::ConfigWebpage(ConfigHelper *config_helper, OTAHelper *ota_helper)
     // TODO: remove links when killing server
     // TODO: Updating via file upload
 
+    DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin", "*");
     // Begin the server
     _server->begin();
 
@@ -141,8 +157,8 @@ ConfigWebpage::ConfigWebpage(ConfigHelper *config_helper, OTAHelper *ota_helper)
 
 /**
  * @brief TaskManager task to handle DNS requests
- * 
- * @param pvParameters 
+ *
+ * @param pvParameters
  */
 void ConfigWebpage::ConfigServerTask(void *pvParameters)
 {
@@ -157,9 +173,28 @@ void ConfigWebpage::ConfigServerTask(void *pvParameters)
 
 void ConfigWebpage::ConfigServeRootPage(AsyncWebServerRequest *request)
 {
-    // TODO: add password auth here
+    // if (!request->authenticate(_config_helper->getConfigOption(CONFIG_PORTAL_USERNAME_KEY, "admin").c_str(),
+    //                            _config_helper->getConfigOption(CONFIG_PORTAL_PASSWORD_KEY, "admin").c_str()))
+    //     return request->requestAuthentication();
     AsyncWebServerResponse *response = request->beginResponse_P(200, "text/html", HTML_GZ_PROGMEM, HTML_GZ_PROGMEM_LEN);
     response->addHeader("Content-Encoding", "gzip");
+    request->send(response);
+}
+
+/* ----------------------------- DEVICE SETTINGS ---------------------------- */
+void ConfigWebpage::handleDeviceSettingsConfig(AsyncWebServerRequest *request)
+{
+
+    JsonDocument responsedoc;
+
+    String updatemsg = "<p class='updatebad'> Device settings not yet implemented!!! </p>";
+
+    responsedoc["updatemsg"] = updatemsg;
+
+    String jsonString;
+    ArduinoJson::serializeJson(responsedoc, jsonString);
+    AsyncResponseStream *response = request->beginResponseStream("application/json");
+    response->print(jsonString.c_str());
     request->send(response);
 }
 
@@ -167,8 +202,8 @@ void ConfigWebpage::ConfigServeRootPage(AsyncWebServerRequest *request)
 
 /**
  * @brief Sends the current configuration JSON as a string to the webpage
- * 
- * @param request 
+ *
+ * @param request
  */
 void ConfigWebpage::handleSendCurrentConfigJSON(AsyncWebServerRequest *request)
 {
@@ -182,8 +217,8 @@ void ConfigWebpage::handleSendCurrentConfigJSON(AsyncWebServerRequest *request)
 
 /**
  * @brief Receives a new JSON config as a string for bulk assignment
- * 
- * @param request 
+ *
+ * @param request
  */
 void ConfigWebpage::handleReceiveConfigJSON(AsyncWebServerRequest *request)
 {
@@ -192,8 +227,8 @@ void ConfigWebpage::handleReceiveConfigJSON(AsyncWebServerRequest *request)
 
 /**
  * @brief Sends the current status of the device as a JSON string
- * 
- * @param request 
+ *
+ * @param request
  */
 void ConfigWebpage::handleSendStatusJSON(AsyncWebServerRequest *request)
 {
@@ -229,22 +264,22 @@ void ConfigWebpage::handleSendStatusJSON(AsyncWebServerRequest *request)
         break;
     }
 
-    _update_json[WIFI_STATUS_MSG_ID]["msg"] = message;
-    _update_json[WIFI_STATUS_MSG_ID]["class"] = css_class;
+    _update_json["WiFi Status"]["msg"] = message;
+    _update_json["WiFi Status"]["class"] = css_class;
 
     // IP Address
     message = String(WiFi.localIP().toString());
-    _update_json[DEVICE_IP_MSG_ID] = message;
+    _update_json["Device IP"] = message;
 
     // Uptime
     message = String(esp_timer_get_time() / 1000000) + " seconds";
-    _update_json[DEVICE_UPTIME_MSG_ID] = message;
+    _update_json["Uptime"] = message;
 
     // Device heap
-    _update_json[DEVICE_FREE_HEAP_MSG_ID] = ESP.getFreeHeap();
+    _update_json["Free Heap"] = ESP.getFreeHeap();
 
     // Max alloc heap
-    _update_json[DEVICE_MAX_ALLOC_HEAP_MSG_ID] = ESP.getMaxAllocHeap();
+    _update_json["Max Free Heap"] = ESP.getMaxAllocHeap();
 
     String jsonString;
     ArduinoJson::serializeJsonPretty(_update_json, jsonString);
@@ -262,8 +297,8 @@ void ConfigWebpage::handleSendStatusJSON(AsyncWebServerRequest *request)
 
 /**
  * @brief Handles factory reset, by calling the appropriate config helper functions
- * 
- * @param request 
+ *
+ * @param request
  */
 void ConfigWebpage::handleFactoryReset(AsyncWebServerRequest *request)
 {
@@ -282,20 +317,15 @@ void ConfigWebpage::handleFactoryReset(AsyncWebServerRequest *request)
 
 /**
  * @brief Restarts device, may result in client disconnection
- * 
- * @param request 
+ *
+ * @param request
  */
 void ConfigWebpage::handleDeviceRestart(AsyncWebServerRequest *request)
 {
+    request->send(200);
     ESP_LOGI("ConfigHandler", "Restart requested from webpage");
     JsonDocument responsedoc;
-    responsedoc["updatemsg"] = "<p class='update'> Restarting </p>";
-    String jsonString;
-    ArduinoJson::serializeJson(responsedoc, jsonString);
-
-    AsyncResponseStream *response = request->beginResponseStream("application/json");
-    response->print(jsonString.c_str());
-    request->send(response);
+    _event_source->send("Restarting now", "update");
     vTaskDelay(pdMS_TO_TICKS(500));
     ESP.restart();
 }
@@ -305,8 +335,8 @@ void ConfigWebpage::handleDeviceRestart(AsyncWebServerRequest *request)
 /* -------------------------- INTERNET PREFERENCES -------------------------- */
 /**
  * @brief Receive, validate and save internet preferences
- * 
- * @param request 
+ *
+ * @param request
  */
 void ConfigWebpage::handleReceiveInternetPreferences(AsyncWebServerRequest *request)
 {
@@ -343,8 +373,8 @@ void ConfigWebpage::handleReceiveInternetPreferences(AsyncWebServerRequest *requ
 
 /**
  * @brief Receive validate and set LTE settings
- * 
- * @param request 
+ *
+ * @param request
  */
 void ConfigWebpage::handleLTESetConfig(AsyncWebServerRequest *request)
 {
@@ -403,8 +433,8 @@ void ConfigWebpage::handleLTESetConfig(AsyncWebServerRequest *request)
 /* ---------------------------- STATION FUNCTIONS --------------------------- */
 /**
  * @brief Start scanning for WiFi networks asynchronously when called
- * 
- * @param request 
+ *
+ * @param request
  */
 void ConfigWebpage::handleStationStartScan(AsyncWebServerRequest *request)
 {
@@ -422,11 +452,11 @@ void ConfigWebpage::handleStationStartScan(AsyncWebServerRequest *request)
 
 /**
  * @brief Sends back the num_networks found and the networks in a JSON array
- * 
+ *
  * The page JS will disregard if there is only one element (i.e. no networks to show)
  * Will keep being called till there are networks found
- * 
- * @param request 
+ *
+ * @param request
  */
 void ConfigWebpage::handleStationScanResults(AsyncWebServerRequest *request)
 {
@@ -463,9 +493,9 @@ void ConfigWebpage::handleStationScanResults(AsyncWebServerRequest *request)
 
 /**
  * @brief Set the station configuration and attempt to connect
- * 
- * 
- * @param request 
+ *
+ *
+ * @param request
  */
 void ConfigWebpage::handleStationSetConfig(AsyncWebServerRequest *request)
 {
@@ -490,7 +520,7 @@ void ConfigWebpage::handleStationSetConfig(AsyncWebServerRequest *request)
         }
     }
 
-    // TODO: Validate SSID and Password before attempting connection and saving
+    // TODO: handle multiple credentials
 
     String err_msg = "";
 
@@ -510,7 +540,7 @@ void ConfigWebpage::handleStationSetConfig(AsyncWebServerRequest *request)
         }
     }
 
-    JsonDocument responsedoc;
+    request->send(200);
     if (err_msg.length() == 0)
     {
         WiFi.disconnect();
@@ -523,89 +553,57 @@ void ConfigWebpage::handleStationSetConfig(AsyncWebServerRequest *request)
             WiFi.begin(_sta_ssid.c_str(), _sta_pass.c_str());
         }
 
-        responsedoc["endpoint"] = STA_SEND_UPDATE_ENDPOINT;
-        String update_msg = "<p class='update'> Trying to connect to '" + _sta_ssid + "' </p>";
-        responsedoc["updatemsg"] = update_msg;
-        responsedoc["timeout"] = "1000";
+        String update_msg = "Trying to connect to '" + _sta_ssid + "'";
+         _event_source->send(update_msg.c_str(), "update");
+
     }
     else
     {
-        responsedoc["updatemsg"] = "<p class='updatebad'> " + err_msg + "<br> Credentials not saved </p>";
+        String update_msg = err_msg + "<br> Credentials not saved";
+        _event_source->send(update_msg.c_str(), "updatebad");
     }
 
-    String jsonString;
-    ArduinoJson::serializeJson(responsedoc, jsonString);
-
-    AsyncResponseStream *response = request->beginResponseStream("application/json");
-    response->print(jsonString.c_str());
-    request->send(response);
+    xTaskCreate(ConfigWebpage::handleStationSendUpdate, "staConnect", 4096, this, 1, NULL);
 }
 
 /**
  * @brief Attempt to connect to the WiFi network
- * 
+ *
  * Sends updates for number of attempts while trying. Failure message and success message
- * 
+ *
  * Saves SSID and Password if successful only
- * 
- * @param request 
+ *
+ * @param request
  */
-void ConfigWebpage::handleStationSendUpdate(AsyncWebServerRequest *request)
+void ConfigWebpage::handleStationSendUpdate(void *pvParameters)
 {
-    if (_sta_ssid.length() == 0 || _sta_pass.length() == 0)
-    {
-        ESP_LOGE(TAG, "No SSID or Password set");
-        return;
-    }
-
-    if (WiFi.status() == WL_CONNECTED)
-    {
-        ESP_LOGI(TAG, "Connected to WiFi");
-    }
-    else
-    {
-        ESP_LOGE(TAG, "Failed to connect to WiFi");
-    }
-
-    _sta_attempts++;
-    JsonDocument responsedoc;
-
-    ESP_LOGI(TAG, "Attempting connection with SSID [%s] and password [%s]",
-             _sta_ssid.c_str(),
-             _sta_pass.c_str());
-
-    WiFi.begin(_sta_ssid.c_str(), _sta_pass.c_str());
-    if (WiFi.status() != WL_CONNECTED)
-    {
-        if (_sta_attempts > 5)
-        {
-            ESP_LOGE(TAG, "Failed to connect to WiFi");
-            String update_msg = "<p class='updatebad'> Failed to connect to '" + _sta_ssid + "' :(  <br> Credentials not saved</p>";
-            responsedoc["updatemsg"] = update_msg.c_str();
+    ConfigWebpage *instance = (ConfigWebpage *)pvParameters;
+    int sta_attempts = 0;
+    while(true){
+        if(WiFi.status() == WL_CONNECTED){
+            String update_msg = "Connected to '" + instance->_sta_ssid + "'!  <br> Credentials Saved!";
+            instance->_event_source->send(update_msg.c_str(), "updategood");
+            instance->_config_helper->setConfigOption(STATION_SSID_KEY, instance->_sta_ssid.c_str());
+            instance->_config_helper->setConfigOption(STATION_PASS_KEY, instance->_sta_pass.c_str());
+            break;
+        }else{
+            sta_attempts++;
+            String update_msg = "Connecting.. attempt [" + String(sta_attempts) + "/5]";
+            instance->_event_source->send(update_msg.c_str(), "updatebad");
+            
         }
-        else
-        {
-            ESP_LOGI(TAG, "Failed to connect to WiFi, retrying");
-            responsedoc["endpoint"] = STA_SEND_UPDATE_ENDPOINT;
-            String updatemsg = "<p class='update'> Connecting.. attempt [" + String(_sta_attempts) + "/5] </p>";
-            responsedoc["updatemsg"] = updatemsg;
-            responsedoc["timeout"] = "1000";
+
+        if(sta_attempts>5){
+            // Avoid constant reconnection attempts
+            WiFi.disconnect();
+            String update_msg = "Failed to connect to '" + instance->_sta_ssid + "' :(  <br> Credentials not saved";
+            instance->_event_source->send(update_msg.c_str(), "updatebad");
+            break;
         }
+        vTaskDelay(pdMS_TO_TICKS(1000));
     }
-    else
-    {
-        String update_msg = "<p class='updategood'> Connected to '" + _sta_ssid + "'!  <br> Credentials Saved!</p>";
-        responsedoc["updatemsg"] = update_msg.c_str();
-        _config_helper->setConfigOption(STATION_SSID_KEY, _sta_ssid.c_str());
-        _config_helper->setConfigOption(STATION_PASS_KEY, _sta_pass.c_str());
-    }
+    vTaskDelete(NULL);
 
-    String jsonString = "";
-    ArduinoJson::serializeJson(responsedoc, jsonString);
-
-    AsyncResponseStream *response = request->beginResponseStream("application/json");
-    response->print(jsonString.c_str());
-    request->send(response);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -614,13 +612,13 @@ void ConfigWebpage::handleStationSendUpdate(AsyncWebServerRequest *request)
 
 /**
  * @brief Receive and validate the data from the MQTT form
- * 
+ *
  * There is some fuckery going on to deal with booleans nicely
- * 
+ *
  * Options will only be saved if there are 0 errors logged
  * Can still result in empty options
- * 
- * @param request 
+ *
+ * @param request
  */
 void ConfigWebpage::handleMQTTSetConfig(AsyncWebServerRequest *request)
 {
@@ -825,7 +823,7 @@ void ConfigWebpage::handleMQTTSetConfig(AsyncWebServerRequest *request)
         }
     }
 
-    JsonDocument responsedoc;
+    request->send(200);
 
     if (err_msgs.length() == 0)
     {
@@ -841,21 +839,14 @@ void ConfigWebpage::handleMQTTSetConfig(AsyncWebServerRequest *request)
         _config_helper->setConfigOption(MQTT_LWT_TOPIC_KEY, mqtt_lwt_topic.c_str());
         _config_helper->setConfigOption(MQTT_LWT_PAYLOAD_KEY, mqtt_lwt_payload.c_str());
         _config_helper->setConfigOption(MQTT_LWT_QOS_KEY, mqtt_lwt_qos);
-        responsedoc["updatemsg"] = "<p class='updategood'>" +
-                                   response_msgs + "<br> MQTT Config has been saved! </p>";
+        _event_source->send(response_msgs.c_str(), "updategood");
+
     }
     else
     {
-        responsedoc["updatemsg"] = "<p class='updatebad'>" +
-                                   err_msgs + "<br> MQTT Config not saved :( </p>";
+        err_msgs += "<br> MQTT Config not saved :(";
+        _event_source->send(err_msgs.c_str(), "updatebad");
     }
-
-    String jsonString;
-    ArduinoJson::serializeJson(responsedoc, jsonString);
-
-    AsyncResponseStream *response = request->beginResponseStream("application/json");
-    response->print(jsonString.c_str());
-    request->send(response);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -864,10 +855,10 @@ void ConfigWebpage::handleMQTTSetConfig(AsyncWebServerRequest *request)
 
 /**
  * @brief Receive, validate and save the access point settings
- * 
+ *
  * Formats the SSID with the UID if the pattern is found
- * 
- * @param request 
+ *
+ * @param request
  */
 void ConfigWebpage::handleAccessPointSetConfig(AsyncWebServerRequest *request)
 {
@@ -896,11 +887,13 @@ void ConfigWebpage::handleAccessPointSetConfig(AsyncWebServerRequest *request)
         }
     }
 
-    String validationresponse = "";
+    request->send(200);
+
+    String err_msgs = "";
 
     if (apssid.length() < 1 || apssid.length() > 32)
     {
-        validationresponse += "SSID is not the right length <br>";
+        err_msgs += "SSID is not the right length <br>";
     }
 
     // Check if all characters are valid (alphanumeric or allowed special characters)
@@ -909,14 +902,14 @@ void ConfigWebpage::handleAccessPointSetConfig(AsyncWebServerRequest *request)
         char c = apssid.charAt(i);
         if (!(isAlphaNumeric(c) || c == '-' || c == '_' || c == '.' || c == ' '))
         {
-            validationresponse += "SSID has unallowed character(s) <br>";
+            err_msgs += "SSID has unallowed character(s) <br>";
             break;
         }
     }
 
     if ((appass.length() < 8 || appass.length() > 63) && appass.length() != 0)
     {
-        validationresponse += "Password is not 0 or between 8 and 64 (inclusive) characters long <br>";
+        err_msgs += "Password is not 0 or between 8 and 64 (inclusive) characters long <br>";
     }
 
     // Check if all characters are valid printable ASCII characters
@@ -925,79 +918,97 @@ void ConfigWebpage::handleAccessPointSetConfig(AsyncWebServerRequest *request)
         char c = appass.charAt(i);
         if (c < 32 || c > 126)
         { // ASCII 32 to 126 are printable characters
-            validationresponse += "Password contains unprintable characters <br>";
+            err_msgs += "Password contains unprintable characters <br>";
         }
     }
     JsonDocument responsedoc;
-    if (validationresponse != "")
+    if (err_msgs != "")
     {
         // i.e. validation failed
-        validationresponse = "<p class='updatebad'>" + validationresponse + "</p>";
-        responsedoc["updatemsg"] = validationresponse.c_str();
+        _event_source->send(err_msgs.c_str(), "updatebad");
     }
     else
     {
         String updatemsg = "<p class='updategood'> Credentials with SSID: " + apssid + " have been saved!</p>";
-        responsedoc["updatemsg"] = updatemsg;
+        _event_source->send(updatemsg.c_str(),"updategood");
         // Save to flash here
         _config_helper->setConfigOption("apssid", apssid.c_str());
         _config_helper->setConfigOption("appass", appass.c_str());
     }
-
-    String jsonString;
-    ArduinoJson::serializeJson(responsedoc, jsonString);
-
-    AsyncResponseStream *response = request->beginResponseStream("application/json");
-    response->print(jsonString.c_str());
-    request->send(response);
 }
 
 /* -------------------------------------------------------------------------- */
 /*                                OTA FUNCTIONS                               */
 /* -------------------------------------------------------------------------- */
 
+void ConfigWebpage::handleUpdateOTAConfig(AsyncWebServerRequest *request)
+{
+    int params = request->params();
+    ESP_LOGI("OTAUpdate", "Callback Received [Params: %d]", params);
+    String updateURL = "";
+    for (int i = 0; i < params; i++)
+    {
+        AsyncWebParameter *p = request->getParam(i);
+        ESP_LOGI("OTAUpdate", "POST[%s]: %s", p->name().c_str(), p->value().c_str());
+        if (strcmp(p->name().c_str(), OTA_JSON_URL_KEY) == 0)
+        {
+            updateURL = p->value();
+            break;
+        }
+    }
+    request->send(200);
+    
+    _ota_helper->CheckUpdateJSON(updateURL);
+}
+
 /**
  * @brief Sends the current status of the OTA update
- * 
+ *
  * Formats a string to have percentage and size of update
- * 
- * @param request 
+ *
+ * @param request
  */
-void ConfigWebpage::handleUpdateOTAStatus(AsyncWebServerRequest *request)
+void ConfigWebpage::handleUpdateOTAStatus(void *pvParameters)
 {
-    JsonDocument responsedoc;
-    String updateStatus = _ota_helper->GetOTAUpdateStatus();
-
-    ESP_LOGI("OTAUpdate", "Status message: [%s]", updateStatus.c_str());
-
-    responsedoc["updatemsg"] = updateStatus.c_str();
-    if (_ota_helper->OTARunning())
+    ConfigWebpage *instance = (ConfigWebpage *)pvParameters;
+    String update_msg = "";
+    bool retcode = false;
+    for(;;)
     {
-        responsedoc["endpoint"] = UPDATE_OTA_STATUS_ENDPOINT;
-        responsedoc["timeout"] = "2000";
+        if (instance->_ota_helper->CheckOTAHasMessage())
+        {
+            retcode = instance->_ota_helper->GetOTAMessage(update_msg);
+            if (retcode)
+            {
+                instance->_event_source->send(update_msg.c_str(), "updategood");
+            }
+            else
+            {
+                instance->_event_source->send(update_msg.c_str(), "updatebad");
+            }
+
+        }else{
+            vTaskDelay(pdMS_TO_TICKS(1000));
+        }
+        vTaskDelay(pdMS_TO_TICKS(500));
+        
     }
-
-    String jsonString;
-    ArduinoJson::serializeJson(responsedoc, jsonString);
-
-    AsyncResponseStream *response = request->beginResponseStream("application/json");
-    response->print(jsonString.c_str());
-    request->send(response);
 }
 
 /**
  * @brief Handle receiving a file upload for OTA update
- * 
- * @param request 
+ *
+ * @param request
  */
-void ConfigWebpage::handleUpdateOTAFileUpload(AsyncWebServerRequest *request)
+void ConfigWebpage::handleUpdateOTAFileUpload(AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final)
 {
+    _ota_helper->handleOTAChunks(filename, index, data, len, final, request->contentLength());
 }
 
 /**
  * @brief Immediately check the URL for an OTA update
- * 
- * @param request 
+ *
+ * @param request
  */
 void ConfigWebpage::handleUpdateOTANowRequest(AsyncWebServerRequest *request)
 {
@@ -1008,30 +1019,16 @@ void ConfigWebpage::handleUpdateOTANowRequest(AsyncWebServerRequest *request)
     {
         AsyncWebParameter *p = request->getParam(i);
         ESP_LOGI("OTAUpdate", "POST[%s]: %s", p->name().c_str(), p->value().c_str());
-        if (strcmp(p->name().c_str(), OTA_URL_KEY) == 0)
+        if (strcmp(p->name().c_str(), OTA_BIN_URL_KEY) == 0)
         {
             updateURL = p->value();
         }
     }
 
-    JsonDocument responsedoc;
-    if (updateURL != "")
-    {
-        responsedoc["updatemsg"] = "<p class='update'> Checking URL for update </p>";
-        responsedoc["endpoint"] = UPDATE_OTA_STATUS_ENDPOINT;
-        responsedoc["timeout"] = "5000";
-    }
-    else
-    {
-        responsedoc["updatemsg"] = "<p class='updatebad'> No URL provided </p>";
-    }
+    request->send(200);
 
-    String jsonString;
-    ArduinoJson::serializeJson(responsedoc, jsonString);
-
-    AsyncResponseStream *response = request->beginResponseStream("application/json");
-    response->print(jsonString.c_str());
-    request->send(response);
+    String update_msg = "Checking: " + updateURL;
+    _event_source->send(update_msg.c_str(), "update");
 
     if (updateURL != "")
     {

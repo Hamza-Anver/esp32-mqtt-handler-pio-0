@@ -24,13 +24,14 @@ public:
     void handleReceiveConfigJSON(AsyncWebServerRequest *request);
     void handleSendStatusJSON(AsyncWebServerRequest *request);
 
+    void handleDeviceSettingsConfig(AsyncWebServerRequest *request);
     void handleFactoryReset(AsyncWebServerRequest *request);
     void handleDeviceRestart(AsyncWebServerRequest *request);
 
     void handleUpdateOTAConfig(AsyncWebServerRequest *request);
-    void handleUpdateOTAStatus(AsyncWebServerRequest *request);
+    static void handleUpdateOTAStatus(void *pvParameters);
     void handleUpdateOTAInternet(AsyncWebServerRequest *request);
-    void handleUpdateOTAFileUpload(AsyncWebServerRequest *request);
+    void handleUpdateOTAFileUpload(AsyncWebServerRequest *reques, String filename, size_t index, uint8_t *data, size_t len, bool final);
     void handleUpdateOTANowRequest(AsyncWebServerRequest *request);
 
     void handleReceiveInternetPreferences(AsyncWebServerRequest *request);
@@ -38,7 +39,7 @@ public:
     void handleStationStartScan(AsyncWebServerRequest *request);
     void handleStationScanResults(AsyncWebServerRequest *request);
     void handleStationSetConfig(AsyncWebServerRequest *request);
-    void handleStationSendUpdate(AsyncWebServerRequest *request);
+    static void handleStationSendUpdate(void *pvParameters);
 
     void handleLTESetConfig(AsyncWebServerRequest *request);
 
@@ -52,6 +53,7 @@ public:
     JsonDocument _update_json;
     OTAHelper *_ota_helper;
     AsyncWebServer *_server;
+    AsyncEventSource *_event_source;
     DNSServer *_dnsServer;
     IPAddress _ap_ip;
     IPAddress _net_msk;
