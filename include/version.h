@@ -4,15 +4,15 @@
 
 #define VERSION_MAJOR 1
 #define VERSION_MINOR 0
-#define VERSION_PATCH 32
-#define VERSION_GIT_HASH "a4c4e4e"
+#define VERSION_PATCH 33
+#define VERSION_GIT_HASH "1849771"
 #define VERSION_GIT_BRANCH "main"
 #define VERSION_BUILD_DATE "2024-08-23"
-#define VERSION_BUILD_TIME "01:29:29"
+#define VERSION_BUILD_TIME "10:45:32"
 
 #define VERSION_ENVIRONMENT "nb-iot-nodemcu-32s-4mb"
 
-#define VERSION_STRING "v1.0.32 Date: 2024-08-23 Time: 01:29:29 Git: main_a4c4e4e"
-#define VERSION_STRING_NO_SPACES "nb-iot-nodemcu-32s-4mb-v1.0.32-20240823-012929-main-a4c4e4e"
+#define VERSION_STRING "v1.0.33 Date: 2024-08-23 Time: 10:45:32 Git: main_1849771"
+#define VERSION_STRING_NO_SPACES "nb-iot-nodemcu-32s-4mb-v1.0.33-20240823-104532-main-1849771"
 
 #endif // VERSION_H

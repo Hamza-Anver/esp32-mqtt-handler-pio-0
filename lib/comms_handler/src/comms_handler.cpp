@@ -112,42 +112,6 @@ void CommsHandler::CommsHandlerManagementTask(void *pvParameters)
     int pattern_count = 0;
     for (;;)
     {
-        // OTA Check
-        // TODO: REMOVE THIS DEBUG CONSTANT CHECKING
-        if (xTaskGetTickCount() >
-            (prev_ota_check + 60 * instance->_ota_freq_mins * configTICK_RATE_HZ) ||
-            true)
-        {
-            prev_ota_check = xTaskGetTickCount();
-            // Only wifi supported for now
-            if (WiFi.status() != WL_CONNECTED)
-            {
-                ESP_LOGE(TAG, "OTA Check failed, no WiFi connection");
-            }
-            else if (WiFi.softAPgetStationNum() != 0)
-            {
-                ESP_LOGE(TAG, "Auto OTA check aborted, users connected to station");
-            }
-            else
-            {
-                instance->_ota_helper->ClearOTAMessageStrings();
-                if (instance->_ota_helper->CheckUpdateJSON(instance->_ota_json_url))
-                {
-                    if (instance->_ota_helper->CheckJSONForNewVersion())
-                    {
-                        ESP_LOGI(TAG, "NEW VERISON FOUND: UPDATING");
-                        instance->_ota_helper->CallOTAInternetUpdateAsync("", true);
-                    }else{
-                        ESP_LOGI(TAG, "No new version");
-                    }
-                }
-                else
-                {
-                    ESP_LOGE(TAG, "Checking Update JSON Failed");
-                }
-            }
-        }
-
         // Check if there is a message in the queue (short check time)
 
         // If state is uninitialized, initialize the module
