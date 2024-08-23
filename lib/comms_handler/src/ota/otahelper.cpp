@@ -8,7 +8,6 @@
 
 static const char *TAG = "OTAHelper";
 
-// TODO: Work with bin uploads
 // TODO: Filesystem updates
 // TODO: JSON checking
 
@@ -196,7 +195,7 @@ bool OTAHelper::CheckJSONForNewVersion(bool str_msg)
             }
         }
     }
-    
+
     return false;
 }
 
