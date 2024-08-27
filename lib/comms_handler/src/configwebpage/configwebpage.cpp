@@ -171,6 +171,13 @@ void ConfigWebpage::ConfigServerTask(void *pvParameters)
     }
 }
 
+/**
+ * @brief Serves the root page from PROGMEM
+ * 
+ * This function can also be where authentication is implemented
+ * 
+ * @param request 
+ */
 void ConfigWebpage::ConfigServeRootPage(AsyncWebServerRequest *request)
 {
     // if (!request->authenticate(_config_helper->getConfigOption(CONFIG_PORTAL_USERNAME_KEY, "admin").c_str(),
@@ -182,6 +189,15 @@ void ConfigWebpage::ConfigServeRootPage(AsyncWebServerRequest *request)
 }
 
 /* ----------------------------- DEVICE SETTINGS ---------------------------- */
+/**
+ * @brief NOT YET IMPLEMENTED - NOT FUNCTIONAL
+ * 
+ * This function is a placeholder for device settings configuration. 
+ * The complete version could handle different user accounts, along with device names
+ * and other suitable parameters.
+ * 
+ * @param request 
+ */
 void ConfigWebpage::handleDeviceSettingsConfig(AsyncWebServerRequest *request)
 {
 
@@ -202,6 +218,8 @@ void ConfigWebpage::handleDeviceSettingsConfig(AsyncWebServerRequest *request)
 
 /**
  * @brief Sends the current configuration JSON as a string to the webpage
+ * 
+ * This is part of a set of settings to make it easier to bulk view and set configurations
  *
  * @param request
  */
@@ -216,7 +234,10 @@ void ConfigWebpage::handleSendCurrentConfigJSON(AsyncWebServerRequest *request)
 }
 
 /**
- * @brief Receives a new JSON config as a string for bulk assignment
+ * @brief NOT YET IMPLEMENTED - NOT FUNCTIONAL
+ * 
+ * Receives a new JSON config as a string for bulk assignment. 
+ * Should take in a JSON string validate it and then save it to the NVS
  *
  * @param request
  */
@@ -227,6 +248,9 @@ void ConfigWebpage::handleReceiveConfigJSON(AsyncWebServerRequest *request)
 
 /**
  * @brief Sends the current status of the device as a JSON string
+ * 
+ * Sends status updates to the webpage client with the current device parameters
+ * The corresponding JS will update the status page with any number of parameters
  *
  * @param request
  */
@@ -316,6 +340,8 @@ void ConfigWebpage::handleFactoryReset(AsyncWebServerRequest *request)
  */
 void ConfigWebpage::handleDeviceRestart(AsyncWebServerRequest *request)
 {
+    // TODO: reload any clients views of the page so that they have the latest version
+    
     request->send(200);
     ESP_LOGI("ConfigHandler", "Restart requested from webpage");
     JsonDocument responsedoc;
