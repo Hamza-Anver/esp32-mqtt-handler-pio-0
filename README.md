@@ -16,6 +16,8 @@ There are 4 primary components to this project:
   - `versioning.py` - a pre script to create a header file with the appropriate semantic versioning definitions. 
   - `bincreate.py` - a post script to move the firmware `.bin` file to an appropriate folder depending on the PlatformIO environment, and create a JSON file representing the semantic version of the firmware along with some other details.
 
+[PDF Doxygen Documentation (Incomplete)](https://github.com/Hamza-Anver/esp32-mqtt-handler-pio-0/blob/77429b3d39d041aad02773cda018742bb2fbc291/ref240830.pdf)
+
 ## Library Structure
 ```
 library.json
